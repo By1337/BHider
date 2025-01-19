@@ -4,4 +4,6 @@ import net.minecraft.network.FriendlyByteBuf;
 
 public interface Packet {
     FriendlyByteBuf writeOut();
+    FriendlyByteBuf getOut();
+    void setOut(FriendlyByteBuf out);
 }

@@ -14,6 +14,7 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.Plugin;
 
 import java.io.Closeable;
+
 // client <- prepender <- compress <- encoder
 public class PipelineHooker implements Listener, Closeable {
     private final Plugin plugin;
@@ -28,15 +29,17 @@ public class PipelineHooker implements Listener, Closeable {
         Channel channel = ((CraftPlayer) player).getHandle().playerConnection.networkManager.channel;
         if (channel.pipeline().get(OutPacketListener.NAME) != null)
             unhook(player);
-        channel.pipeline().addAfter("compress", OutPacketListener.NAME, new OutPacketListener(player, plugin));
+        // client <- prepender <- compress <- bhider_encoder <- bhider_listener <- encoder
+        channel.pipeline().addAfter("compress", OutPacketListener.NAME, new OutPacketListener(player, plugin, channel));
+        channel.pipeline().addBefore(OutPacketListener.NAME, CustomPacketEncoder.NAME, new CustomPacketEncoder());
         StringBuilder sb = new StringBuilder();
+        sb.append("client <- ");
         channel.pipeline().forEach(e -> {
             if (e.getValue() instanceof ChannelOutboundHandlerAdapter)
                 sb.append(e.getKey()).append(" <- ");
         });
-        sb.append("client");
+        sb.append("generate packet");
         System.out.println(sb);
-
     }
 
     public boolean isHooked(Player player) {
@@ -46,9 +49,11 @@ public class PipelineHooker implements Listener, Closeable {
 
     private void unhook(Player player) {
         Channel channel = ((CraftPlayer) player).getHandle().playerConnection.networkManager.channel;
+        channel.pipeline().forEach(e -> System.out.println(e.getKey()));
         if (channel.pipeline().get(OutPacketListener.NAME) == null) return;
         var handler = channel.pipeline().remove(OutPacketListener.NAME);
         if (handler instanceof OutPacketListener opl) opl.close();
+        channel.pipeline().remove(CustomPacketEncoder.NAME);
     }
 
     @EventHandler

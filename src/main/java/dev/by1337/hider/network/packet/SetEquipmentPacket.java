@@ -12,7 +12,7 @@ import java.util.List;
 
 public class SetEquipmentPacket implements Packet {
     private final FriendlyByteBuf in;
-    private final FriendlyByteBuf out;
+    private FriendlyByteBuf out;
 
     private final LazyLoad<Integer> packetId;
     private final LazyLoad<Integer> entityId;
@@ -25,7 +25,13 @@ public class SetEquipmentPacket implements Packet {
         packetId = new LazyLoad<>(in::readVarInt_, null);
         entityId = new LazyLoad<>(in::readVarInt_, packetId);
         slots = new LazyLoad<>(this::readSlots, entityId);
+    }
 
+    public SetEquipmentPacket(int packetId, int entityId, List<Pair<EquipmentSlot, ItemStack>> slots) {
+        in = null;
+        this.packetId = new LazyLoad<>(() -> packetId, null, true);
+        this.entityId = new LazyLoad<>(() -> entityId, null, true);
+        this.slots = new LazyLoad<>(() -> slots, null, true);
     }
 
     private List<Pair<EquipmentSlot, ItemStack>> readSlots() {
@@ -51,7 +57,7 @@ public class SetEquipmentPacket implements Packet {
             boolean var5 = var2 != var1 - 1;
             int var6 = var4.ordinal();
             out.writeByte(var5 ? var6 | -128 : var6);
-            out.writeItem((ItemStack) var3.getSecond());
+            out.writeItem(var3.getSecond());
         }
     }
 
@@ -69,6 +75,16 @@ public class SetEquipmentPacket implements Packet {
         } else {
             writeSlots();
         }
+        return out;
+    }
+
+    @Override
+    public void setOut(FriendlyByteBuf out) {
+        this.out = out;
+    }
+
+    @Override
+    public FriendlyByteBuf getOut() {
         return out;
     }
 

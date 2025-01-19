@@ -7,7 +7,7 @@ import java.util.UUID;
 
 public class AddPlayerPacket implements Packet {
     private final FriendlyByteBuf in;
-    private final FriendlyByteBuf out;
+    private FriendlyByteBuf out;
 
     private final LazyLoad<Integer> packetId;
     private final LazyLoad<Integer> entityId;
@@ -51,6 +51,16 @@ public class AddPlayerPacket implements Packet {
         return out;
     }
 
+    @Override
+    public void setOut(FriendlyByteBuf out) {
+        this.out = out;
+    }
+
+    @Override
+    public FriendlyByteBuf getOut() {
+        return out;
+    }
+
     public int packetId() {
         return packetId.get();
     }
@@ -86,24 +96,31 @@ public class AddPlayerPacket implements Packet {
     public void setPacketId(final int id) {
         packetId.set(id);
     }
+
     public void setEntityId(final int id) {
         entityId.set(id);
     }
+
     public void setPlayerId(final UUID id) {
         playerId.set(id);
     }
+
     public void setX(final double x) {
         this.x.set(x);
     }
+
     public void setY(final double y) {
         this.y.set(y);
     }
+
     public void setZ(final double z) {
         this.z.set(z);
     }
+
     public void setYRot(final byte yRot) {
         this.yRot.set(yRot);
     }
+
     public void setXRot(final byte xRot) {
         this.xRot.set(xRot);
     }

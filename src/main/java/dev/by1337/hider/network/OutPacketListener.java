@@ -2,7 +2,9 @@ package dev.by1337.hider.network;
 
 import dev.by1337.hider.PlayerController;
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelPromise;
 import io.netty.handler.codec.MessageToByteEncoder;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -15,12 +17,13 @@ public class OutPacketListener extends MessageToByteEncoder<ByteBuf> implements 
     public static final String NAME = "bhider_listener";
     private final PlayerController playerController;
 
-    public OutPacketListener(Player player, Plugin plugin) {
+    public OutPacketListener(Player player, Plugin plugin, Channel channel) {
         final UUID uuid = player.getUniqueId();
         this.playerController = new PlayerController(
                 () -> Bukkit.getPlayer(uuid),
                 plugin,
-                uuid
+                uuid,
+                channel
         );
     }
 
@@ -32,5 +35,11 @@ public class OutPacketListener extends MessageToByteEncoder<ByteBuf> implements 
     @Override
     public void close() {
         playerController.close();
+    }
+
+    @Override
+    public void handlerRemoved(ChannelHandlerContext ctx) throws Exception {
+        super.handlerRemoved(ctx);
+        close();
     }
 }

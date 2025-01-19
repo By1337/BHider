@@ -13,6 +13,7 @@ import java.util.List;
 
 public class SetEquipmentPacketMutator {
     private static final ListTag FAKE_ENCHANTMENTS;
+    public static final List<Pair<EquipmentSlot, ItemStack>> EMPTY_EQUIPMENTS;
 
     public static void obfuscate(SetEquipmentPacket packet) {
         var equipment = packet.slots();
@@ -47,5 +48,10 @@ public class SetEquipmentPacketMutator {
         enchantments.setShort("lvl", (short) 0);
         enchantments.setString("id", "bhider:hided");
         FAKE_ENCHANTMENTS.add(enchantments);
+
+        EMPTY_EQUIPMENTS = new ArrayList<>();
+        for (EquipmentSlot value : EquipmentSlot.values()) {
+            EMPTY_EQUIPMENTS.add(Pair.of(value, ItemStack.EMPTY));
+        }
     }
 }

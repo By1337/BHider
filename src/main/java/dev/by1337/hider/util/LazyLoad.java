@@ -16,6 +16,11 @@ public class LazyLoad<T> {
         this.supplier = supplier;
         this.loadBefore = loadBefore;
     }
+    public LazyLoad(Supplier<T> supplier, @Nullable LazyLoad<?> loadBefore, boolean modified) {
+        this.supplier = supplier;
+        this.loadBefore = loadBefore;
+        this.modified = modified;
+    }
 
     public T get() {
         if (loadBefore != null && !loadBefore.loaded) {
