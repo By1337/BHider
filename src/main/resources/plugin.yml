@@ -1,0 +1,6 @@
+name: BHider
+version: '${project.version}'
+main: dev.by1337.hider.BHider
+api-version: '1.16'
+depend: [ BLib ]
+authors: [ By1337 ]
