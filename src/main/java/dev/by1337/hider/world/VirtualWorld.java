@@ -3,6 +3,7 @@ package dev.by1337.hider.world;
 import dev.by1337.hider.network.packet.LevelChunkPacket;
 import io.netty.buffer.Unpooled;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import org.by1337.blib.geom.Vec2i;
 import org.jetbrains.annotations.Nullable;
@@ -11,6 +12,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class VirtualWorld {
+    public static final BlockState AIR = Blocks.AIR.getBlockData();
     private final Map<Vec2i, VirtualChunk> chunks = new HashMap<>();
 
     @Nullable
@@ -23,18 +25,13 @@ public class VirtualWorld {
     }
 
     public void readChunk(LevelChunkPacket packet) {
-       try {
-           Vec2i pos = new Vec2i(packet.x(), packet.z());
-           System.out.println("VirtualWorld.readChunk " + pos);
-           VirtualChunk virtualChunk = new VirtualChunk(pos.x, pos.y);
-           virtualChunk.replaceWithPacketData(
-                   new FriendlyByteBuf(Unpooled.wrappedBuffer(packet.buffer())),
-                   packet.availableSections()
-           );
-           chunks.put(pos, virtualChunk);
-       }catch (Throwable e) {
-           e.printStackTrace();
-       }
+        Vec2i pos = new Vec2i(packet.x(), packet.z());
+        VirtualChunk virtualChunk = new VirtualChunk(pos.x, pos.y);
+        virtualChunk.replaceWithPacketData(
+                new FriendlyByteBuf(Unpooled.wrappedBuffer(packet.buffer())),
+                packet.availableSections()
+        );
+        chunks.put(pos, virtualChunk);
     }
 
     @Nullable

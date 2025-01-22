@@ -8,12 +8,7 @@ import dev.by1337.hider.world.VirtualWorld;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
-import net.minecraft.network.ConnectionProtocol;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.PacketFlow;
-import net.minecraft.network.protocol.game.ClientboundLightUpdatePacket;
-import net.minecraft.network.protocol.game.ClientboundSetTimePacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
@@ -23,6 +18,7 @@ import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitTask;
+import org.by1337.blib.geom.Vec2i;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -92,15 +88,23 @@ public class PlayerController implements Closeable {
             onPacket(new MoveEntityPacket.Rot(in, new FriendlyByteBuf(out)));
         } else if (packetId == PacketIds.MOVE_ENTITY_PACKET_POS_ROT) {
             onPacket(new MoveEntityPacket.PosRot(in, new FriendlyByteBuf(out)));
-        } else if (packetId == PacketIds.LEVEL_CHUNK) {
+        } else if (packetId == PacketIds.LOAD_LEVEL_CHUNK) {
             onPacket(new LevelChunkPacket(in, new FriendlyByteBuf(out)));
+        } else if (packetId == PacketIds.FORGET_LEVEL_CHUNK) {
+            onPacket(new ForgetLevelChunkPacket(in, new FriendlyByteBuf(out)));
+        } else if (packetId == PacketIds.SECTION_BLOCKS_UPDATE) {
+            onPacket(new SectionBlocksUpdatePacket(in, new FriendlyByteBuf(out)));
+        } else if (packetId == PacketIds.BLOCK_UPDATE_PACKET) {
+            onPacket(new BlockUpdatePacket(in, new FriendlyByteBuf(out)));
+        } else if (packetId == PacketIds.EXPLODE_PACKET) {
+            onPacket(new ExplodePacket(in, new FriendlyByteBuf(out)));
         } else {
-            Packet<?> packet = ConnectionProtocol.PLAY.createPacket(PacketFlow.CLIENTBOUND, packetId);
-            if (
-                    !(packet instanceof ClientboundLightUpdatePacket) &&
-                            !(packet instanceof ClientboundSetTimePacket)
-                            && packet != null)
-                logger.info(packet.getClass().getName());
+//            Packet<?> packet = ConnectionProtocol.PLAY.createPacket(PacketFlow.CLIENTBOUND, packetId);
+//            if (
+//                    !(packet instanceof ClientboundLightUpdatePacket) &&
+//                            !(packet instanceof ClientboundSetTimePacket)
+//                            && packet != null)
+//               // logger.info(packet.getClass().getName());
 
 
             in0.resetReaderIndex();
@@ -110,7 +114,7 @@ public class PlayerController implements Closeable {
     }
 
     private void onPacket(dev.by1337.hider.network.packet.Packet packet) {
-        logger.info(packet.toString());
+        long l = System.nanoTime();
         if (packet instanceof AddPlayerPacket addPlayerPacket) {
             PlayerData playerData = new PlayerData(addPlayerPacket);
             System.out.println(playerData);
@@ -133,8 +137,29 @@ public class PlayerController implements Closeable {
         } else if (packet instanceof LevelChunkPacket packet1) {
             packet1.writeOut(); // todo хз пакет ломается если его сначала прочитать
             level.readChunk(packet1);
+        } else if (packet instanceof ForgetLevelChunkPacket packet1) {
+            level.unloadChunk(new Vec2i(packet1.x(), packet1.y()));
+            packet1.writeOut();
+        } else if (packet instanceof SectionBlocksUpdatePacket packet1) {
+            packet1.runUpdates((pos, block) -> level.setBlock(pos.getX(), pos.getY(), pos.getZ(), block));
+            packet1.writeOut();
+        } else if (packet instanceof BlockUpdatePacket packet1) {
+            var pos = packet1.getPos();
+            level.setBlock(pos.getX(), pos.getY(), pos.getZ(), packet1.getBlock());
+            packet1.writeOut();
+        } else if (packet instanceof ExplodePacket packet1) {
+            packet1.toBlow().forEach(pos -> level.setBlock(pos.getX(), pos.getY(), pos.getZ(), VirtualWorld.AIR));
+            packet1.writeOut();
         } else {
             packet.writeOut();
+        }
+        long time = (System.nanoTime() - l) / 1_000_000;
+        if (time < 1) {
+         //   logger.info("Packet {} {} ms.", packet.getClass().getSimpleName(), time);
+        } else if (time < 10) {
+            logger.warn("Packet {} {} ms.", packet.getClass().getSimpleName(), time);
+        } else {
+            logger.error("Packet {} {} ms.", packet.getClass().getSimpleName(), time);
         }
     }
 
