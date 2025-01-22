@@ -3,10 +3,8 @@ package dev.by1337.hider;
 import com.mojang.datafixers.util.Pair;
 import dev.by1337.hider.mutator.SetEquipmentPacketMutator;
 import dev.by1337.hider.network.PacketIds;
-import dev.by1337.hider.network.packet.AddPlayerPacket;
-import dev.by1337.hider.network.packet.MoveEntityPacket;
-import dev.by1337.hider.network.packet.SetEntityDataPacket;
-import dev.by1337.hider.network.packet.SetEquipmentPacket;
+import dev.by1337.hider.network.packet.*;
+import dev.by1337.hider.world.VirtualWorld;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
@@ -20,6 +18,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
 import org.bukkit.Bukkit;
+import org.bukkit.Chunk;
 import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
@@ -43,6 +42,7 @@ public class PlayerController implements Closeable {
     private final BukkitTask task;
     private final Channel channel;
     private final ServerPlayer player;
+    private final VirtualWorld level = new VirtualWorld();
 
     public PlayerController(Supplier<Player> playerSupplier, Plugin plugin, UUID uuid, Channel channel) {
         this.playerSupplier = playerSupplier;
@@ -57,6 +57,22 @@ public class PlayerController implements Closeable {
     private void tick() {
         for (PlayerData value : viewingPlayers.values()) {
             value.tick();
+        }
+        if (player.isSneaking()) {
+            Chunk chunk = player.getBukkitEntity().getLocation().getChunk();
+            logger.info("Сверяю блоки в чанке {} {}...", chunk.getX(), chunk.getZ());
+            for (int x = 0; x < 15; x++) {
+                for (int y = 0; y < 255; y++) {
+                    for (int z = 0; z < 15; z++) {
+                        var b = chunk.getBlock(x, y, z);
+                        var playerBlock = level.getBlock(chunk.getX() << 4 | x, y, chunk.getZ() << 4 | z);
+                        if (b.getType().isAir() && (playerBlock == null || playerBlock.getBukkitMaterial().isAir()))
+                            continue;
+                        if (playerBlock != null && b.getType() == playerBlock.getBukkitMaterial()) continue;
+                        logger.warn("Неправильный блок на координатах {} {} {} ожидался {} а получен {}", b.getX(), b.getY(), b.getZ(), b.getType().name(), playerBlock.getBukkitMaterial().name());
+                    }
+                }
+            }
         }
     }
 
@@ -76,6 +92,8 @@ public class PlayerController implements Closeable {
             onPacket(new MoveEntityPacket.Rot(in, new FriendlyByteBuf(out)));
         } else if (packetId == PacketIds.MOVE_ENTITY_PACKET_POS_ROT) {
             onPacket(new MoveEntityPacket.PosRot(in, new FriendlyByteBuf(out)));
+        } else if (packetId == PacketIds.LEVEL_CHUNK) {
+            onPacket(new LevelChunkPacket(in, new FriendlyByteBuf(out)));
         } else {
             Packet<?> packet = ConnectionProtocol.PLAY.createPacket(PacketFlow.CLIENTBOUND, packetId);
             if (
@@ -112,6 +130,9 @@ public class PlayerController implements Closeable {
             if (playerData != null) {
                 playerData.onMove(packet1);
             }
+        } else if (packet instanceof LevelChunkPacket packet1) {
+            packet1.writeOut(); // todo хз пакет ломается если его сначала прочитать
+            level.readChunk(packet1);
         } else {
             packet.writeOut();
         }

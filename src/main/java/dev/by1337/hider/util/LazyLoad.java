@@ -26,7 +26,11 @@ public class LazyLoad<T> {
         if (loadBefore != null && !loadBefore.loaded) {
             loadBefore.get();
         }
-        return value == null ? value = supplier.get() : value;
+        if (!loaded){
+            value = supplier.get();
+            loaded = true;
+        }
+        return value;
     }
 
     public void set(T value) {
