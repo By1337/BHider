@@ -18,11 +18,15 @@ import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitTask;
+import org.by1337.blib.BLib;
 import org.by1337.blib.geom.Vec2i;
+import org.by1337.blib.geom.Vec3d;
+import org.by1337.blib.profiler.Profiler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -155,7 +159,7 @@ public class PlayerController implements Closeable {
         }
         long time = (System.nanoTime() - l) / 1_000_000;
         if (time < 1) {
-         //   logger.info("Packet {} {} ms.", packet.getClass().getSimpleName(), time);
+            //   logger.info("Packet {} {} ms.", packet.getClass().getSimpleName(), time);
         } else if (time < 10) {
             logger.warn("Packet {} {} ms.", packet.getClass().getSimpleName(), time);
         } else {
@@ -175,6 +179,7 @@ public class PlayerController implements Closeable {
         private double y;
         private double z;
         private final Map<EquipmentSlot, ItemStack> equipment = new HashMap<>();
+        private boolean hidedArmor;
         private boolean hideArmor;
         private boolean isShift;
         private boolean isGlowing;
@@ -194,26 +199,36 @@ public class PlayerController implements Closeable {
         }
 
         public void tick() {
-            //  hideArmor.setVote(0, !isGlowing && isShift);
-            //  hideArmor.setVote(1, new Vec3d(PlayerController.this.playerSupplier.get().getLocation()).distance(x, y, z) > 5);
+            System.out.println("PlayerData.tick");
 
+            Vec3d rayOrigin = new Vec3d(player.lastX,  player.getHeadY(), player.lastZ);
+            var aabb = serverPlayer.getBoundingBox().expand(.6d, .1d, .6d);
 
-//            hideArmor.result();
-//            if (hideArmor.changed()) {
-//                if (hideArmor.is()) {
-//                    hideArmor();
-//                } else {
-//                    unhideArmor();
-//                }
-//            }
-            if (false) {
-                if (!hideArmor) {
+            Vec3d[] testPoints = {
+                    new Vec3d(aabb.minX, aabb.minY, aabb.minZ), // min
+                    new Vec3d(aabb.minX, aabb.maxY, aabb.minZ), // min
+                    new Vec3d(aabb.maxX, aabb.maxY, aabb.minZ), // min
+                    new Vec3d(aabb.maxX, aabb.minY, aabb.minZ), // min
+                    new Vec3d(aabb.minX, aabb.minY, aabb.minZ).add(aabb.maxX, aabb.maxY, 0).divide(2, 2, 1),
+
+                    new Vec3d(aabb.minX, aabb.minY, aabb.maxZ), // min
+                    new Vec3d(aabb.minX, aabb.maxY, aabb.maxZ), // min
+                    new Vec3d(aabb.maxX, aabb.maxY, aabb.maxZ), // min
+                    new Vec3d(aabb.maxX, aabb.minY, aabb.maxZ), // min
+            };
+
+            hideArmor = Arrays.stream(testPoints).noneMatch(p -> level.rayTrace(rayOrigin, p) == null);
+
+            if (hideArmor) {
+                if (!hidedArmor) {
                     hideArmor();
-                    hideArmor = true;
+                    hidedArmor = true;
                 }
-            } else if (hideArmor) {
-                unhideArmor();
-                hideArmor = false;
+            } else {
+                if (hidedArmor) {
+                    unhideArmor();
+                    hidedArmor = false;
+                }
             }
         }
 
@@ -222,6 +237,7 @@ public class PlayerController implements Closeable {
             y = serverPlayer.lastY;
             z = serverPlayer.lastZ;
 
+           // tick();
             packet.writeOut();
         }
 
@@ -243,6 +259,7 @@ public class PlayerController implements Closeable {
         }
 
         public void hideArmor() {
+            System.out.println("PlayerData.hideArmor");
             suppressArmorUpdate = true;
             SetEquipmentPacket equipmentPacket = new SetEquipmentPacket(
                     PacketIds.SET_EQUIPMENT_PACKET,
@@ -253,7 +270,9 @@ public class PlayerController implements Closeable {
         }
 
         public void unhideArmor() {
+            System.out.println("PlayerData.unhideArmor");
             suppressArmorUpdate = false;
+            if (equipment.isEmpty()) return;
             SetEquipmentPacket equipmentPacket = new SetEquipmentPacket(
                     PacketIds.SET_EQUIPMENT_PACKET,
                     entityId,

@@ -10,7 +10,7 @@ import org.jetbrains.annotations.Nullable;
 
 public class VirtualChunkSection {
     public static final int BLOCK_COUNT = 16 * 16 * 16;
-    private final BlockState[] blockStates = new BlockState[BLOCK_COUNT];
+    private final VirtualBlock[] blockStates = new VirtualBlock[BLOCK_COUNT];
 
     public void read(FriendlyByteBuf buffer) {
         short nonEmptyBlockCount = buffer.readShort();
@@ -36,7 +36,7 @@ public class VirtualChunkSection {
         for (int index = 0; index < BLOCK_COUNT; index++) {
             int paletteIndex = storage.get(index); // Индекс в палете
             BlockState state = palette == null ? Blocks.AIR.getBlockData() : palette[paletteIndex];
-            blockStates[index] = state; // Сохраняем в массив
+            blockStates[index] = new VirtualBlock(state);
         }
     }
 
@@ -45,7 +45,7 @@ public class VirtualChunkSection {
     }
 
     @Nullable
-    public BlockState getBlockState(int x, int y, int z) {
+    public VirtualBlock getBlockState(int x, int y, int z) {
         if (x < 0 || x >= 16 || y < 0 || y >= 16 || z < 0 || z >= 16) {
             return null;
         }
@@ -56,7 +56,7 @@ public class VirtualChunkSection {
         if (x < 0 || x >= 16 || y < 0 || y >= 16 || z < 0 || z >= 16) {
             throw new IllegalArgumentException("Coordinates out of bounds: " + x + ", " + y + ", " + z);
         }
-        blockStates[index(x, y, z)] = state;
+        blockStates[index(x, y, z)] = new VirtualBlock(state);
     }
 
     public long[] readLongArray(long @Nullable [] var1, FriendlyByteBuf buf) {

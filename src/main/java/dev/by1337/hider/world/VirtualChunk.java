@@ -30,11 +30,13 @@ public class VirtualChunk {
     }
 
     @Nullable
-    public BlockState getBlock(int worldX, int worldY, int worldZ) {
+    public VirtualBlock getBlock(int worldX, int worldY, int worldZ) {
         int localX = worldX & 15;
         int localY = worldY & 15;
         int localZ = worldZ & 15;
         int sectionIndex = worldY >> 4;
+
+        if (sectionIndex >= 16) return null;
 
         VirtualChunkSection section = sections[sectionIndex];
         if (section == null) {
@@ -54,4 +56,6 @@ public class VirtualChunk {
         }
         sections[sectionIndex].setBlockState(localX, localY, localZ, state);
     }
+
+
 }
