@@ -24,6 +24,7 @@ import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitTask;
+import org.bukkit.util.Vector;
 import org.by1337.blib.geom.Vec3d;
 import org.by1337.blib.geom.Vec3i;
 import org.slf4j.Logger;
@@ -34,36 +35,33 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 
 public class PlayerController implements Closeable {
     private final Logger logger;
-    private final Supplier<Player> playerSupplier;
     private final Plugin plugin;
     private final UUID uuid;
     private final Map<Integer, PlayerData> viewingPlayers = new ConcurrentHashMap<>();
     private final BukkitTask task;
     private final Channel channel;
-    private final ServerPlayer player;
+    private final ServerPlayer client;
     private final VirtualWorld level = new VirtualWorld();
 
-    public PlayerController(Supplier<Player> playerSupplier, Plugin plugin, UUID uuid, Channel channel) {
-        this.playerSupplier = playerSupplier;
+    public PlayerController(Player player, Plugin plugin, UUID uuid, Channel channel) {
         this.plugin = plugin;
         this.uuid = uuid;
-        logger = LoggerFactory.getLogger(playerSupplier.get().getName());
+        logger = LoggerFactory.getLogger(player.getName());
         //  task = plugin.getServer().getScheduler().runTaskTimerAsynchronously(plugin, this::tick, 1, 1);
         task = plugin.getServer().getScheduler().runTaskTimer(plugin, this::tick, 1, 1); // todo make async
         this.channel = channel;
-        player = ((CraftPlayer) playerSupplier.get()).getHandle();
+        this.client = ((CraftPlayer) player).getHandle();
     }
 
     private void tick() {
         for (PlayerData value : viewingPlayers.values()) {
             value.tick();
         }
-        if (player.isSneaking() && false) {
-            Chunk chunk = player.getBukkitEntity().getLocation().getChunk();
+        if (client.isSneaking() && false) {
+            Chunk chunk = client.getBukkitEntity().getLocation().getChunk();
             logger.info("Сверяю блоки в чанке {} {}...", chunk.getX(), chunk.getZ());
             for (int x = 0; x < 15; x++) {
                 for (int y = 0; y < 255; y++) {
@@ -179,32 +177,26 @@ public class PlayerController implements Closeable {
     }
 
     public class PlayerData {
-        private int entityId;
-        private UUID playerId;
+        private final int entityId;
+        private final UUID uuid;
         private double x;
         private double y;
         private double z;
         private final Map<EquipmentSlot, ItemStack> equipment = new HashMap<>();
         private final BoolWatcher hideArmor = new BoolWatcher(false);
-        private boolean isShift;
-        private boolean isGlowing;
-        private final Supplier<Player> playerSupplier;
-        private final ServerPlayer serverPlayer;
+        private final ServerPlayer player;
         private boolean suppressArmorUpdate;
 
         public PlayerData(AddPlayerPacket packet) {
             entityId = packet.entityId();
-            playerId = packet.playerId();
+            uuid = packet.playerId();
             x = packet.x();
             y = packet.y();
             z = packet.z();
-            playerSupplier = () -> Bukkit.getPlayer(playerId);
-            serverPlayer = ((CraftPlayer) playerSupplier.get()).getHandle();
+            player = ((CraftPlayer) Bukkit.getPlayer(uuid)).getHandle();
         }
 
         public void tick() {
-            //System.out.println("PlayerData.tick");
-
             long l = System.nanoTime();
             hideArmor.set(!isVisible());
             long l1 = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - l);
@@ -225,32 +217,36 @@ public class PlayerController implements Closeable {
         }
 
         public boolean isVisible() {
-            Vec3d startPos = new Vec3d(player.lastX, player.getHeadY(), player.lastZ);
+            Vec3d clientEye = new Vec3d(client.lastX, client.getHeadY(), client.lastZ);
+            var aabb = player.getBoundingBox().expand(.2d, .2d, .2d);
+            Vec3d playerCenter = new Vec3d(aabb.maxX + aabb.minX, aabb.maxY + aabb.minY, aabb.maxZ + aabb.minZ).divide(2);
 
-            var aabb = serverPlayer.getBoundingBox().expand(.2d, .2d, .2d);
+            var dir = client.getBukkitEntity().getLocation().getDirection();
+            Vector directionToTarget = playerCenter.add(0, -0.5, 0).toVector().subtract(clientEye.toVector()).normalize();
 
-            Vec3d center = new Vec3d(aabb.maxX + aabb.minX, aabb.maxY + aabb.minY, aabb.maxZ + aabb.minZ).divide(2);
+
+            if (directionToTarget.angle(dir) >= 1.7) return false;
 
             List<Vec3d> positions = new ArrayList<>(List.of(
-                    new Vec3d(aabb.minX, aabb.minY, aabb.minZ).sub(startPos).normalize(),
-                    new Vec3d(aabb.minX, aabb.maxY, aabb.minZ).sub(startPos).normalize(),
-                    new Vec3d(aabb.maxX, aabb.maxY, aabb.minZ).sub(startPos).normalize(),
-                    new Vec3d(aabb.maxX, aabb.minY, aabb.minZ).sub(startPos).normalize(),
-                    new Vec3d(aabb.minX, aabb.minY, aabb.maxZ).sub(startPos).normalize(),
-                    new Vec3d(aabb.minX, aabb.maxY, aabb.maxZ).sub(startPos).normalize(),
-                    new Vec3d(aabb.maxX, aabb.maxY, aabb.maxZ).sub(startPos).normalize(),
-                    new Vec3d(aabb.maxX, aabb.minY, aabb.maxZ).sub(startPos).normalize(),
-                    center.sub(startPos).normalize(),
-                    center.add(0.6, 0, 0).sub(startPos).normalize(),
-                    center.add(-0.6, 0, 0).sub(startPos).normalize(),
-                    center.add(0, 0, 0.6).sub(startPos).normalize(),
-                    center.add(0, 0, -0.6).sub(startPos).normalize()
+                    new Vec3d(aabb.minX, aabb.minY, aabb.minZ).sub(clientEye).normalize(),
+                    new Vec3d(aabb.minX, aabb.maxY, aabb.minZ).sub(clientEye).normalize(),
+                    new Vec3d(aabb.maxX, aabb.maxY, aabb.minZ).sub(clientEye).normalize(),
+                    new Vec3d(aabb.maxX, aabb.minY, aabb.minZ).sub(clientEye).normalize(),
+                    new Vec3d(aabb.minX, aabb.minY, aabb.maxZ).sub(clientEye).normalize(),
+                    new Vec3d(aabb.minX, aabb.maxY, aabb.maxZ).sub(clientEye).normalize(),
+                    new Vec3d(aabb.maxX, aabb.maxY, aabb.maxZ).sub(clientEye).normalize(),
+                    new Vec3d(aabb.maxX, aabb.minY, aabb.maxZ).sub(clientEye).normalize(),
+                    playerCenter.sub(clientEye).normalize(),
+                    playerCenter.add(0.6, 0, 0).sub(clientEye).normalize(),
+                    playerCenter.add(-0.6, 0, 0).sub(clientEye).normalize(),
+                    playerCenter.add(0, 0, 0.6).sub(clientEye).normalize(),
+                    playerCenter.add(0, 0, -0.6).sub(clientEye).normalize()
             ));
             Predicate<BlockBox> test = box -> {
-                positions.removeIf(p -> box.rayIntersects(startPos, p));
+                positions.removeIf(p -> box.rayIntersects(clientEye, p));
                 return positions.isEmpty();
             };
-            return !testBlocksOnLine(startPos, new Vec3d(aabb.minX, aabb.minY, aabb.minZ), test);
+            return !testBlocksOnLine(clientEye, new Vec3d(aabb.minX, aabb.minY, aabb.minZ), test);
         }
 
         private boolean testBlocksOnLine(Vec3d rayOrigin, Vec3d rayEnd, Predicate<BlockBox> test) {
@@ -287,15 +283,15 @@ public class PlayerController implements Closeable {
         }
 
         public void onMove(MoveEntityPacket packet) {
-            x = serverPlayer.lastX;
-            y = serverPlayer.lastY;
-            z = serverPlayer.lastZ;
+            x = player.lastX;
+            y = player.lastY;
+            z = player.lastZ;
         }
 
 
         public void setEntityDataPacket(SetEntityDataPacket packet) {
-            isShift = serverPlayer.isSneaking();
-            isGlowing = serverPlayer.isGlowing();
+            //  isShift = me.isSneaking();
+            //  isGlowing = me.isGlowing();
         }
 
         public void setEquipmentPacket(SetEquipmentPacket packet) {
@@ -338,7 +334,7 @@ public class PlayerController implements Closeable {
         public String toString() {
             return "PlayerData{" +
                     "entityId=" + entityId +
-                    ", playerId=" + playerId +
+                    ", playerId=" + uuid +
                     ", x=" + x +
                     ", y=" + y +
                     ", z=" + z +
