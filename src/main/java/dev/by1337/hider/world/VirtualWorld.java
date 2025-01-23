@@ -9,7 +9,6 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import org.by1337.blib.geom.Vec2i;
-import org.by1337.blib.geom.Vec3d;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -90,6 +89,7 @@ public class VirtualWorld {
     public void setBlock0(int x, int y, int z, BlockState state) {
         setBlock(x, y, z, Block.REGISTRY_ID.getId_(state));
     }
+
     public void setBlock(int x, int y, int z, int state) {
         int chunkX = x >> 4;
         int chunkZ = z >> 4;
@@ -97,39 +97,4 @@ public class VirtualWorld {
         if (chunk != null)
             chunk.setBlock(x, y, z, state);
     }
-
-    public @Nullable BlockState rayTrace(Vec3d rayOrigin, Vec3d rayEnd) {
-        Vec3d rayDirection = rayEnd.sub(rayOrigin).normalize();
-
-        double x = rayOrigin.x;
-        double y = rayOrigin.y;
-        double z = rayOrigin.z;
-
-        double step = 0.1;
-        double maxDistance = rayOrigin.distance(rayEnd);
-        double distance = 0;
-
-        while (distance < maxDistance) {
-            int blockX = (int) Math.floor(x);
-            int blockY = (int) Math.floor(y);
-            int blockZ = (int) Math.floor(z);
-
-            VirtualBlock block = getVirtualBlock(blockX, blockY, blockZ);
-
-            if (block != null) {
-                BlockBox box = block.box(blockX, blockY, blockZ);
-                if (box != null && box.rayIntersects(rayOrigin, rayDirection)) {
-                    return block.state();
-                }
-            }
-
-            x += rayDirection.x * step;
-            y += rayDirection.y * step;
-            z += rayDirection.z * step;
-            distance += step;
-        }
-        return null;
-    }
-
-
 }

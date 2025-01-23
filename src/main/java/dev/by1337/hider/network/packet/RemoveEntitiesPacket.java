@@ -3,7 +3,7 @@ package dev.by1337.hider.network.packet;
 import dev.by1337.hider.util.LazyLoad;
 import net.minecraft.network.FriendlyByteBuf;
 
-public class RemoveEntitiesPacket implements Packet {
+public class RemoveEntitiesPacket extends Packet {
     private final FriendlyByteBuf in;
     private FriendlyByteBuf out;
 
@@ -27,7 +27,7 @@ public class RemoveEntitiesPacket implements Packet {
     }
 
     @Override
-    public FriendlyByteBuf writeOut() {
+    protected FriendlyByteBuf writeOut() {
         in.resetReaderIndex();
         out.writeBytes(in);
         return out;
@@ -39,7 +39,7 @@ public class RemoveEntitiesPacket implements Packet {
     }
 
     @Override
-    public FriendlyByteBuf getOut() {
+    protected FriendlyByteBuf getOut() {
         return out;
     }
 

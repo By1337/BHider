@@ -5,7 +5,7 @@ import net.minecraft.network.FriendlyByteBuf;
 
 import java.util.UUID;
 
-public class AddPlayerPacket implements Packet {
+public class AddPlayerPacket extends Packet {
     private final FriendlyByteBuf in;
     private FriendlyByteBuf out;
 
@@ -33,7 +33,7 @@ public class AddPlayerPacket implements Packet {
     }
 
     @Override
-    public FriendlyByteBuf writeOut() {
+    protected FriendlyByteBuf writeOut() {
         if (!entityId.isModified() && !playerId.isModified() && !x.isModified() && !y.isModified() &&
                 !z.isModified() && !yRot.isModified() && !xRot.isModified()) {
             in.resetReaderIndex();
@@ -57,7 +57,7 @@ public class AddPlayerPacket implements Packet {
     }
 
     @Override
-    public FriendlyByteBuf getOut() {
+    protected FriendlyByteBuf getOut() {
         return out;
     }
 

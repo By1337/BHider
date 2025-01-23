@@ -3,7 +3,7 @@ package dev.by1337.hider.network.packet;
 import dev.by1337.hider.util.LazyLoad;
 import net.minecraft.network.FriendlyByteBuf;
 
-public class ForgetLevelChunkPacket implements Packet {
+public class ForgetLevelChunkPacket extends Packet {
     private final FriendlyByteBuf in;
     private FriendlyByteBuf out;
 
@@ -21,7 +21,7 @@ public class ForgetLevelChunkPacket implements Packet {
     }
 
     @Override
-    public FriendlyByteBuf writeOut() {
+    protected FriendlyByteBuf writeOut() {
         in.resetReaderIndex();
         out.writeBytes(in);
         return out;
@@ -33,7 +33,7 @@ public class ForgetLevelChunkPacket implements Packet {
     }
 
     @Override
-    public FriendlyByteBuf getOut() {
+    protected FriendlyByteBuf getOut() {
         return out;
     }
 

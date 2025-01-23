@@ -7,7 +7,7 @@ import net.minecraft.network.syncher.SynchedEntityData;
 import java.io.IOException;
 import java.util.List;
 
-public class SetEntityDataPacket implements Packet {
+public class SetEntityDataPacket extends Packet {
     private final FriendlyByteBuf in;
     private FriendlyByteBuf out;
 
@@ -54,7 +54,7 @@ public class SetEntityDataPacket implements Packet {
     }
 
     @Override
-    public FriendlyByteBuf writeOut() {
+    protected FriendlyByteBuf writeOut() {
         if (!entityId.isModified() && !packedItems.isModified()) {
             in.resetReaderIndex();
             out.writeBytes(in);
@@ -75,7 +75,7 @@ public class SetEntityDataPacket implements Packet {
     }
 
     @Override
-    public FriendlyByteBuf getOut() {
+    protected FriendlyByteBuf getOut() {
         return out;
     }
 

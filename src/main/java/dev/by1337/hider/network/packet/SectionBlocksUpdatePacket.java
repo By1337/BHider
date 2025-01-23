@@ -4,13 +4,11 @@ import dev.by1337.hider.util.LazyLoad;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.state.BlockState;
 import org.by1337.blib.util.Pair;
 
 import java.util.function.BiConsumer;
 
-public class SectionBlocksUpdatePacket implements Packet {
+public class SectionBlocksUpdatePacket extends Packet {
     private final FriendlyByteBuf in;
     private FriendlyByteBuf out;
 
@@ -43,7 +41,7 @@ public class SectionBlocksUpdatePacket implements Packet {
     }
 
     @Override
-    public FriendlyByteBuf writeOut() {
+    protected FriendlyByteBuf writeOut() {
         in.resetReaderIndex();
         out.writeBytes(in);
         return out;
@@ -55,7 +53,7 @@ public class SectionBlocksUpdatePacket implements Packet {
     }
 
     @Override
-    public FriendlyByteBuf getOut() {
+    protected FriendlyByteBuf getOut() {
         return out;
     }
 

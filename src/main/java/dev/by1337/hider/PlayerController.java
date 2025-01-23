@@ -5,6 +5,7 @@ import dev.by1337.hider.mutator.SetEquipmentPacketMutator;
 import dev.by1337.hider.network.PacketIds;
 import dev.by1337.hider.network.packet.*;
 import dev.by1337.hider.shapes.BlockBox;
+import dev.by1337.hider.util.BoolWatcher;
 import dev.by1337.hider.world.VirtualWorld;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
@@ -52,7 +53,7 @@ public class PlayerController implements Closeable {
         this.uuid = uuid;
         logger = LoggerFactory.getLogger(playerSupplier.get().getName());
         //  task = plugin.getServer().getScheduler().runTaskTimerAsynchronously(plugin, this::tick, 1, 1);
-        task = plugin.getServer().getScheduler().runTaskTimer(plugin, this::tick, 1, 1);
+        task = plugin.getServer().getScheduler().runTaskTimer(plugin, this::tick, 1, 1); // todo make async
         this.channel = channel;
         player = ((CraftPlayer) playerSupplier.get()).getHandle();
     }
@@ -144,32 +145,24 @@ public class PlayerController implements Closeable {
                 playerData.onMove(packet1);
             }
         } else if (packet instanceof LevelChunkPacket packet1) {
-            packet1.writeOut(); // todo хз пакет ломается если его сначала прочитать
+            packet1.write(); // todo хз пакет ломается если его сначала прочитать
+            packet1.setCanceled(true); // отменяем чтобы повторно не записать пакет в байт буфер
             level.readChunk(packet1);
         } else if (packet instanceof ForgetLevelChunkPacket packet1) {
             level.unloadChunk(packet1.x(), packet1.y());
-            packet1.writeOut();
         } else if (packet instanceof SectionBlocksUpdatePacket packet1) {
             packet1.runUpdates((pos, block) -> level.setBlock(pos.getX(), pos.getY(), pos.getZ(), block));
-            packet1.writeOut();
         } else if (packet instanceof BlockUpdatePacket packet1) {
             var pos = packet1.getPos();
             level.setBlock(pos.getX(), pos.getY(), pos.getZ(), packet1.getBlock());
-            packet1.writeOut();
         } else if (packet instanceof ExplodePacket packet1) {
             packet1.toBlow().forEach(pos -> level.setBlock(pos.getX(), pos.getY(), pos.getZ(), 0));
-            packet1.writeOut();
         } else if (packet instanceof RemoveEntitiesPacket packet1) {
             for (int entityId : packet1.getEntityIds()) {
-                var v = viewingPlayers.remove(entityId);
-                if (v != null) {
-                    logger.info("Remove {}", v);
-                }
+                viewingPlayers.remove(entityId);
             }
-            packet1.writeOut();
-        } else {
-            packet.writeOut();
         }
+        packet.write();
         long time = (System.nanoTime() - l) / 1_000_000;
         if (time < 1) {
             //   logger.info("Packet {} {} ms.", packet.getClass().getSimpleName(), time);
@@ -192,8 +185,7 @@ public class PlayerController implements Closeable {
         private double y;
         private double z;
         private final Map<EquipmentSlot, ItemStack> equipment = new HashMap<>();
-        private boolean hidedArmor;
-        private boolean hideArmor;
+        private final BoolWatcher hideArmor = new BoolWatcher(false);
         private boolean isShift;
         private boolean isGlowing;
         private final Supplier<Player> playerSupplier;
@@ -206,7 +198,6 @@ public class PlayerController implements Closeable {
             x = packet.x();
             y = packet.y();
             z = packet.z();
-            packet.writeOut();
             playerSupplier = () -> Bukkit.getPlayer(playerId);
             serverPlayer = ((CraftPlayer) playerSupplier.get()).getHandle();
         }
@@ -215,7 +206,7 @@ public class PlayerController implements Closeable {
             //System.out.println("PlayerData.tick");
 
             long l = System.nanoTime();
-            hideArmor = !isVisible();
+            hideArmor.set(!isVisible());
             long l1 = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - l);
             if (l1 > 10) {
                 logger.error("isVisible Time {}", l1);
@@ -223,16 +214,13 @@ public class PlayerController implements Closeable {
                 logger.warn("isVisible Time {}", l1);
             }
 
-            if (hideArmor) {
-                if (!hidedArmor) {
+            if (hideArmor.isDirty()) {
+                if (hideArmor.get()) {
                     hideArmor();
-                    hidedArmor = true;
-                }
-            } else {
-                if (hidedArmor) {
+                } else {
                     unhideArmor();
-                    hidedArmor = false;
                 }
+                hideArmor.setDirty(false);
             }
         }
 
@@ -302,15 +290,12 @@ public class PlayerController implements Closeable {
             x = serverPlayer.lastX;
             y = serverPlayer.lastY;
             z = serverPlayer.lastZ;
-
-            packet.writeOut();
         }
 
 
         public void setEntityDataPacket(SetEntityDataPacket packet) {
             isShift = serverPlayer.isSneaking();
             isGlowing = serverPlayer.isGlowing();
-            packet.writeOut();
         }
 
         public void setEquipmentPacket(SetEquipmentPacket packet) {
@@ -318,9 +303,12 @@ public class PlayerController implements Closeable {
             for (Pair<EquipmentSlot, ItemStack> pair : list) {
                 equipment.put(pair.getFirst(), pair.getSecond());
             }
-            if (suppressArmorUpdate) return;
+            equipment.entrySet().removeIf(e -> e.getValue().isEmpty());
+            if (suppressArmorUpdate) {
+                packet.setCanceled(true);
+                return;
+            }
             SetEquipmentPacketMutator.obfuscate(packet);
-            packet.writeOut();
         }
 
         public void hideArmor() {
@@ -344,10 +332,6 @@ public class PlayerController implements Closeable {
                     equipment.entrySet().stream().map(e -> Pair.of(e.getKey(), e.getValue())).toList()
             );
             channel.writeAndFlush(equipmentPacket);
-        }
-
-        public boolean isArmorHide() {
-            return hideArmor;
         }
 
         @Override

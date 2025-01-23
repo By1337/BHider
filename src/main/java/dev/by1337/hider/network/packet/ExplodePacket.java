@@ -8,7 +8,7 @@ import net.minecraft.util.Mth;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ExplodePacket implements Packet {
+public class ExplodePacket extends Packet {
     private final FriendlyByteBuf in;
     private FriendlyByteBuf out;
 
@@ -51,7 +51,7 @@ public class ExplodePacket implements Packet {
     }
 
     @Override
-    public FriendlyByteBuf writeOut() {
+    protected FriendlyByteBuf writeOut() {
         in.resetReaderIndex();
         out.writeBytes(in);
         return out;
@@ -63,7 +63,7 @@ public class ExplodePacket implements Packet {
     }
 
     @Override
-    public FriendlyByteBuf getOut() {
+    protected FriendlyByteBuf getOut() {
         return out;
     }
 

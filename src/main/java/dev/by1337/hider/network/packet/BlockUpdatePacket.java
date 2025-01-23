@@ -3,10 +3,8 @@ package dev.by1337.hider.network.packet;
 import dev.by1337.hider.util.LazyLoad;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.state.BlockState;
 
-public class BlockUpdatePacket implements Packet {
+public class BlockUpdatePacket extends Packet {
     private final FriendlyByteBuf in;
     private FriendlyByteBuf out;
 
@@ -25,7 +23,7 @@ public class BlockUpdatePacket implements Packet {
     }
 
     @Override
-    public FriendlyByteBuf writeOut() {
+    protected FriendlyByteBuf writeOut() {
         in.resetReaderIndex();
         out.writeBytes(in);
         return out;
@@ -37,7 +35,7 @@ public class BlockUpdatePacket implements Packet {
     }
 
     @Override
-    public FriendlyByteBuf getOut() {
+    protected FriendlyByteBuf getOut() {
         return out;
     }
 

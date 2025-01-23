@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class SetEquipmentPacket implements Packet {
+public class SetEquipmentPacket extends Packet {
     private final FriendlyByteBuf in;
     private FriendlyByteBuf out;
 
@@ -62,7 +62,7 @@ public class SetEquipmentPacket implements Packet {
     }
 
     @Override
-    public FriendlyByteBuf writeOut() {
+    protected FriendlyByteBuf writeOut() {
         if (!slots.isModified() && !entityId.isModified()) {
             in.resetReaderIndex();
             out.writeBytes(in);
@@ -84,7 +84,7 @@ public class SetEquipmentPacket implements Packet {
     }
 
     @Override
-    public FriendlyByteBuf getOut() {
+    protected FriendlyByteBuf getOut() {
         return out;
     }
 

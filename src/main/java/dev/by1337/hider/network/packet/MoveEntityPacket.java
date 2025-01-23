@@ -3,7 +3,7 @@ package dev.by1337.hider.network.packet;
 import dev.by1337.hider.util.LazyLoad;
 import net.minecraft.network.FriendlyByteBuf;
 
-public abstract class MoveEntityPacket implements Packet {
+public abstract class MoveEntityPacket extends Packet {
     protected final FriendlyByteBuf in;
     protected FriendlyByteBuf out;
 
@@ -26,7 +26,7 @@ public abstract class MoveEntityPacket implements Packet {
 
 
     @Override
-    public FriendlyByteBuf getOut() {
+    protected FriendlyByteBuf getOut() {
         return out;
     }
 
@@ -118,7 +118,7 @@ public abstract class MoveEntityPacket implements Packet {
         }
 
         @Override
-        public FriendlyByteBuf writeOut() {
+        protected FriendlyByteBuf writeOut() {
             if (!modified) {
                 in.resetReaderIndex();
                 out.writeBytes(in);
@@ -144,7 +144,7 @@ public abstract class MoveEntityPacket implements Packet {
         }
 
         @Override
-        public FriendlyByteBuf writeOut() {
+        protected FriendlyByteBuf writeOut() {
             if (!modified) {
                 in.resetReaderIndex();
                 out.writeBytes(in);
@@ -173,7 +173,7 @@ public abstract class MoveEntityPacket implements Packet {
         }
 
         @Override
-        public FriendlyByteBuf writeOut() {
+        protected FriendlyByteBuf writeOut() {
             if (!modified) {
                 in.resetReaderIndex();
                 out.writeBytes(in);

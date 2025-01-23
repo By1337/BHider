@@ -8,9 +8,10 @@ import net.minecraft.network.FriendlyByteBuf;
 
 public class CustomPacketEncoder extends MessageToByteEncoder<Packet> {
     public static final String NAME = "bhider_encoder";
+
     @Override
     protected void encode(ChannelHandlerContext ctx, Packet packet, ByteBuf buf) throws Exception {
         packet.setOut(new FriendlyByteBuf(buf));
-        packet.writeOut();
+        packet.write();
     }
 }
