@@ -19,8 +19,8 @@ public interface BlockBox {
         }
 
         @Override
-        @Contract("_ -> this")
-        public BlockBox offset(Vec3d offset) {
+        @Contract("_, _, _ -> this")
+        public BlockBox offset(int x, int y, int z) {
             return EMPTY;
         }
     };
@@ -29,5 +29,6 @@ public interface BlockBox {
 
     boolean rayIntersects(Vec3d rayOrigin, Vec3d rayDirection);
 
-    BlockBox offset(Vec3d offset);
+    @Contract(value = "_, _, _ -> new", pure = true)
+    BlockBox offset(int x, int y, int z);
 }

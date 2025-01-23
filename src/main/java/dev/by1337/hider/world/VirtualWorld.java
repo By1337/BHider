@@ -3,31 +3,49 @@ package dev.by1337.hider.world;
 import dev.by1337.hider.network.packet.LevelChunkPacket;
 import dev.by1337.hider.shapes.BlockBox;
 import io.netty.buffer.Unpooled;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
-import org.by1337.blib.BLib;
 import org.by1337.blib.geom.Vec2i;
 import org.by1337.blib.geom.Vec3d;
-import org.by1337.blib.profiler.Profiler;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.HashMap;
-import java.util.Map;
-
 public class VirtualWorld {
     public static final BlockState AIR = Blocks.AIR.getBlockData();
-    private final Map<Vec2i, VirtualChunk> chunks = new HashMap<>();
+    private final Long2ObjectOpenHashMap<VirtualChunk> chunks = new Long2ObjectOpenHashMap<>(8192, 0.5F);
+    private static final VirtualChunk[] lastLoadedChunks = new VirtualChunk[16];
 
     @Nullable
-    public VirtualChunk getChunk(final Vec2i pos) {
+    public VirtualChunk getChunk(int x, int z) {
+        int cacheKey = getChunkCacheKey(x, z);
+        VirtualChunk chunk = lastLoadedChunks[cacheKey];
+        if (chunk != null && chunk.x == x && chunk.z == z) {
+            return chunk;
+        }
+        return lastLoadedChunks[cacheKey] = this.chunks.get(pair(x, z));
+    }
 
-        return chunks.get(pos);
+    public VirtualChunk getChunk(final Vec2i pos) {
+        return getChunk(pos.x, pos.y);
+    }
+
+    public static long pair(int i, int j) {
+        return (long) i & 4294967295L | ((long) j & 4294967295L) << 32;
+    }
+
+    private static int getChunkCacheKey(int x, int z) {
+        return x & 3 | (z & 3) << 2;
+    }
+
+    public void unloadChunk(int x, int z) {
+        chunks.remove(pair(x, z));
     }
 
     public void unloadChunk(final Vec2i pos) {
-        chunks.remove(pos);
+        unloadChunk(pos.x, pos.y);
     }
 
     public void readChunk(LevelChunkPacket packet) {
@@ -37,14 +55,14 @@ public class VirtualWorld {
                 new FriendlyByteBuf(Unpooled.wrappedBuffer(packet.buffer())),
                 packet.availableSections()
         );
-        chunks.put(pos, virtualChunk);
+        chunks.put(pair(pos.x, pos.y), virtualChunk);
     }
 
     @NotNull
     public BlockState getBlock(int x, int y, int z) {
         int chunkX = x >> 4;
         int chunkZ = z >> 4;
-        VirtualChunk chunk = chunks.get(new Vec2i(chunkX, chunkZ));
+        VirtualChunk chunk = getChunk(chunkX, chunkZ);
         if (chunk == null) {
             return AIR;
         }
@@ -56,7 +74,7 @@ public class VirtualWorld {
     public VirtualBlock getVirtualBlock(int x, int y, int z) {
         int chunkX = x >> 4;
         int chunkZ = z >> 4;
-        VirtualChunk chunk = chunks.get(new Vec2i(chunkX, chunkZ));
+        VirtualChunk chunk = getChunk(chunkX, chunkZ);
         if (chunk == null) {
             return null;
         }
@@ -66,14 +84,18 @@ public class VirtualWorld {
     @NotNull
     public BlockBox getBlockBox(int x, int y, int z) {
         var v = getVirtualBlock(x, y, z);
-        return v == null ? BlockBox.EMPTY : v.box(new Vec3d(x, y, z));
+        return v == null ? BlockBox.EMPTY : v.box(x, y, z);
     }
 
-    public void setBlock(int x, int y, int z, BlockState state) {
+    public void setBlock0(int x, int y, int z, BlockState state) {
+        setBlock(x, y, z, Block.REGISTRY_ID.getId_(state));
+    }
+    public void setBlock(int x, int y, int z, int state) {
         int chunkX = x >> 4;
         int chunkZ = z >> 4;
-        VirtualChunk chunk = chunks.computeIfAbsent(new Vec2i(chunkX, chunkZ), pos -> new VirtualChunk(pos.x, pos.y));
-        chunk.setBlock(x, y, z, state);
+        VirtualChunk chunk = getChunk(chunkX, chunkZ);
+        if (chunk != null)
+            chunk.setBlock(x, y, z, state);
     }
 
     public @Nullable BlockState rayTrace(Vec3d rayOrigin, Vec3d rayEnd) {
@@ -95,7 +117,7 @@ public class VirtualWorld {
             VirtualBlock block = getVirtualBlock(blockX, blockY, blockZ);
 
             if (block != null) {
-                BlockBox box = block.box(new Vec3d(blockX, blockY, blockZ));
+                BlockBox box = block.box(blockX, blockY, blockZ);
                 if (box != null && box.rayIntersects(rayOrigin, rayDirection)) {
                     return block.state();
                 }

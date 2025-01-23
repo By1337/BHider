@@ -4,6 +4,7 @@ import com.mojang.datafixers.util.Pair;
 import dev.by1337.hider.mutator.SetEquipmentPacketMutator;
 import dev.by1337.hider.network.PacketIds;
 import dev.by1337.hider.network.packet.*;
+import dev.by1337.hider.shapes.BlockBox;
 import dev.by1337.hider.world.VirtualWorld;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
@@ -18,19 +19,16 @@ import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitTask;
-import org.by1337.blib.BLib;
-import org.by1337.blib.geom.Vec2i;
 import org.by1337.blib.geom.Vec3d;
-import org.by1337.blib.profiler.Profiler;
+import org.by1337.blib.geom.Vec3i;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 public class PlayerController implements Closeable {
@@ -49,7 +47,8 @@ public class PlayerController implements Closeable {
         this.plugin = plugin;
         this.uuid = uuid;
         logger = LoggerFactory.getLogger(playerSupplier.get().getName());
-        task = plugin.getServer().getScheduler().runTaskTimerAsynchronously(plugin, this::tick, 1, 1);
+        //  task = plugin.getServer().getScheduler().runTaskTimerAsynchronously(plugin, this::tick, 1, 1);
+        task = plugin.getServer().getScheduler().runTaskTimer(plugin, this::tick, 1, 1);
         this.channel = channel;
         player = ((CraftPlayer) playerSupplier.get()).getHandle();
     }
@@ -58,7 +57,7 @@ public class PlayerController implements Closeable {
         for (PlayerData value : viewingPlayers.values()) {
             value.tick();
         }
-        if (player.isSneaking()) {
+        if (player.isSneaking() && false) {
             Chunk chunk = player.getBukkitEntity().getLocation().getChunk();
             logger.info("Сверяю блоки в чанке {} {}...", chunk.getX(), chunk.getZ());
             for (int x = 0; x < 15; x++) {
@@ -142,7 +141,7 @@ public class PlayerController implements Closeable {
             packet1.writeOut(); // todo хз пакет ломается если его сначала прочитать
             level.readChunk(packet1);
         } else if (packet instanceof ForgetLevelChunkPacket packet1) {
-            level.unloadChunk(new Vec2i(packet1.x(), packet1.y()));
+            level.unloadChunk(packet1.x(), packet1.y());
             packet1.writeOut();
         } else if (packet instanceof SectionBlocksUpdatePacket packet1) {
             packet1.runUpdates((pos, block) -> level.setBlock(pos.getX(), pos.getY(), pos.getZ(), block));
@@ -152,7 +151,7 @@ public class PlayerController implements Closeable {
             level.setBlock(pos.getX(), pos.getY(), pos.getZ(), packet1.getBlock());
             packet1.writeOut();
         } else if (packet instanceof ExplodePacket packet1) {
-            packet1.toBlow().forEach(pos -> level.setBlock(pos.getX(), pos.getY(), pos.getZ(), VirtualWorld.AIR));
+            packet1.toBlow().forEach(pos -> level.setBlock(pos.getX(), pos.getY(), pos.getZ(), 0));
             packet1.writeOut();
         } else {
             packet.writeOut();
@@ -199,25 +198,16 @@ public class PlayerController implements Closeable {
         }
 
         public void tick() {
-            System.out.println("PlayerData.tick");
+            //System.out.println("PlayerData.tick");
 
-            Vec3d rayOrigin = new Vec3d(player.lastX,  player.getHeadY(), player.lastZ);
-            var aabb = serverPlayer.getBoundingBox().expand(.6d, .1d, .6d);
-
-            Vec3d[] testPoints = {
-                    new Vec3d(aabb.minX, aabb.minY, aabb.minZ), // min
-                    new Vec3d(aabb.minX, aabb.maxY, aabb.minZ), // min
-                    new Vec3d(aabb.maxX, aabb.maxY, aabb.minZ), // min
-                    new Vec3d(aabb.maxX, aabb.minY, aabb.minZ), // min
-                    new Vec3d(aabb.minX, aabb.minY, aabb.minZ).add(aabb.maxX, aabb.maxY, 0).divide(2, 2, 1),
-
-                    new Vec3d(aabb.minX, aabb.minY, aabb.maxZ), // min
-                    new Vec3d(aabb.minX, aabb.maxY, aabb.maxZ), // min
-                    new Vec3d(aabb.maxX, aabb.maxY, aabb.maxZ), // min
-                    new Vec3d(aabb.maxX, aabb.minY, aabb.maxZ), // min
-            };
-
-            hideArmor = Arrays.stream(testPoints).noneMatch(p -> level.rayTrace(rayOrigin, p) == null);
+            long l = System.nanoTime();
+            hideArmor = !isVisible();
+            long l1 = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - l);
+            if (l1 > 10) {
+                logger.error("isVisible Time {}", l1);
+            } else if (l1 > 0) {
+                logger.warn("isVisible Time {}", l1);
+            }
 
             if (hideArmor) {
                 if (!hidedArmor) {
@@ -232,12 +222,73 @@ public class PlayerController implements Closeable {
             }
         }
 
+        public boolean isVisible() {
+            Vec3d startPos = new Vec3d(player.lastX, player.getHeadY(), player.lastZ);
+
+            var aabb = serverPlayer.getBoundingBox().expand(.2d, .2d, .2d);
+
+            Vec3d center = new Vec3d(aabb.maxX + aabb.minX, aabb.maxY + aabb.minY, aabb.maxZ + aabb.minZ).divide(2);
+
+            List<Vec3d> positions = new ArrayList<>(List.of(
+                    new Vec3d(aabb.minX, aabb.minY, aabb.minZ).sub(startPos).normalize(),
+                    new Vec3d(aabb.minX, aabb.maxY, aabb.minZ).sub(startPos).normalize(),
+                    new Vec3d(aabb.maxX, aabb.maxY, aabb.minZ).sub(startPos).normalize(),
+                    new Vec3d(aabb.maxX, aabb.minY, aabb.minZ).sub(startPos).normalize(),
+                    new Vec3d(aabb.minX, aabb.minY, aabb.maxZ).sub(startPos).normalize(),
+                    new Vec3d(aabb.minX, aabb.maxY, aabb.maxZ).sub(startPos).normalize(),
+                    new Vec3d(aabb.maxX, aabb.maxY, aabb.maxZ).sub(startPos).normalize(),
+                    new Vec3d(aabb.maxX, aabb.minY, aabb.maxZ).sub(startPos).normalize(),
+                    center.sub(startPos).normalize(),
+                    center.add(0.6, 0, 0).sub(startPos).normalize(),
+                    center.add(-0.6, 0, 0).sub(startPos).normalize(),
+                    center.add(0, 0, 0.6).sub(startPos).normalize(),
+                    center.add(0, 0, -0.6).sub(startPos).normalize()
+            ));
+            Predicate<BlockBox> test = box -> {
+                positions.removeIf(p -> box.rayIntersects(startPos, p));
+                return positions.isEmpty();
+            };
+            return !testBlocksOnLine(startPos, new Vec3d(aabb.minX, aabb.minY, aabb.minZ), test);
+        }
+
+        private boolean testBlocksOnLine(Vec3d rayOrigin, Vec3d rayEnd, Predicate<BlockBox> test) {
+            Vec3d rayDirection = rayEnd.sub(rayOrigin).normalize();
+
+            double x = rayOrigin.x;
+            double y = rayOrigin.y;
+            double z = rayOrigin.z;
+
+
+            double maxDistance = rayOrigin.distance(rayEnd);
+            double step = 0.1;
+            double distance = 0;
+
+            while (distance < maxDistance) {
+                Vec3i block = new Vec3d(x, y, z).toBlockPos();
+
+                for (int offsetX = -1; offsetX <= 1; offsetX++) {
+                    for (int offsetY = -1; offsetY <= 1; offsetY++) {
+                        for (int offsetZ = -1; offsetZ <= 1; offsetZ++) {
+                            if (test.test(level.getBlockBox(block.x + offsetX, block.y + offsetY, block.z + offsetZ))) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+
+                x += rayDirection.x * step;
+                y += rayDirection.y * step;
+                z += rayDirection.z * step;
+                distance += step;
+            }
+            return false;
+        }
+
         public void onMove(MoveEntityPacket packet) {
             x = serverPlayer.lastX;
             y = serverPlayer.lastY;
             z = serverPlayer.lastZ;
 
-           // tick();
             packet.writeOut();
         }
 
@@ -266,7 +317,7 @@ public class PlayerController implements Closeable {
                     entityId,
                     SetEquipmentPacketMutator.EMPTY_EQUIPMENTS
             );
-            channel.write(equipmentPacket);
+            channel.writeAndFlush(equipmentPacket);
         }
 
         public void unhideArmor() {
@@ -278,7 +329,7 @@ public class PlayerController implements Closeable {
                     entityId,
                     equipment.entrySet().stream().map(e -> Pair.of(e.getKey(), e.getValue())).toList()
             );
-            channel.write(equipmentPacket);
+            channel.writeAndFlush(equipmentPacket);
         }
 
         public boolean isArmorHide() {

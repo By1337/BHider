@@ -17,7 +17,7 @@ public class SectionBlocksUpdatePacket implements Packet {
     private final LazyLoad<Integer> packetId;
 
     private final LazyLoad<SectionPos> sectionPos;
-    private final LazyLoad<Pair<short[], BlockState[]>> states;
+    private final LazyLoad<Pair<short[], int[]>> states;
     private final LazyLoad<Boolean> suppressLightUpdates;
 
 
@@ -30,12 +30,12 @@ public class SectionBlocksUpdatePacket implements Packet {
         states = new LazyLoad<>(() -> {
             int i = in.readVarInt_();
             short[] positions = new short[i];
-            var states = new BlockState[i];
+            var states = new int[i];
 
             for (int j = 0; j < i; ++j) {
                 long k = in.readVarLong();
                 positions[j] = (short) ((int) (k & 4095L));
-                states[j] = Block.REGISTRY_ID.fromId((int) (k >>> 12));
+                states[j] = (int) (k >>> 12);
             }
             return Pair.of(positions, states);
         }, suppressLightUpdates);
@@ -63,7 +63,7 @@ public class SectionBlocksUpdatePacket implements Packet {
         return sectionPos.get();
     }
 
-    public Pair<short[], BlockState[]> getStates() {
+    public Pair<short[], int[]> getStates() {
         return states.get();
     }
 
@@ -71,13 +71,13 @@ public class SectionBlocksUpdatePacket implements Packet {
         return suppressLightUpdates.get();
     }
 
-    public void runUpdates(BiConsumer<BlockPos, BlockState> biconsumer) {
+    public void runUpdates(BiConsumer<BlockPos, Integer> biconsumer) {
         BlockPos.MutableBlockPos blockposition_mutableblockposition = new BlockPos.MutableBlockPos();
 
         SectionPos sectionpos = getSectionPos();
         var pair = getStates();
         short[] positions = pair.getLeft();
-        BlockState[] states = pair.getRight();
+        int[] states = pair.getRight();
 
         for (int i = 0; i < positions.length; ++i) {
             short short0 = positions[i];

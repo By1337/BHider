@@ -12,7 +12,7 @@ public class BlockUpdatePacket implements Packet {
 
     private final LazyLoad<Integer> packetId;
     private final LazyLoad<BlockPos> pos;
-    private final LazyLoad<BlockState> block;
+    private final LazyLoad<Integer> block;
 
 
     public BlockUpdatePacket(final FriendlyByteBuf in, FriendlyByteBuf out) {
@@ -21,7 +21,7 @@ public class BlockUpdatePacket implements Packet {
         packetId = new LazyLoad<>(in::readVarInt_, null);
 
         pos = new LazyLoad<>(in::readBlockPos, packetId);
-        block = new LazyLoad<>(() -> Block.REGISTRY_ID.fromId(in.readVarInt_()), pos);
+        block = new LazyLoad<>(in::readVarInt_, pos);
     }
 
     @Override
@@ -45,7 +45,7 @@ public class BlockUpdatePacket implements Packet {
         return pos.get();
     }
 
-    public BlockState getBlock() {
+    public int getBlock() {
         return block.get();
     }
 }

@@ -22,5 +22,4 @@ public class BHider extends JavaPlugin {
     public void onDisable() {
         pipelineHooker.close();
     }
-
 }

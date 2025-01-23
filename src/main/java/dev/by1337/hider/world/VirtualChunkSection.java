@@ -3,8 +3,6 @@ package dev.by1337.hider.world;
 import io.netty.handler.codec.DecoderException;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.util.BitStorage;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
 
@@ -16,13 +14,13 @@ public class VirtualChunkSection {
         short nonEmptyBlockCount = buffer.readShort();
         byte bits = buffer.readByte();
 
-        BlockState[] palette;
+        int[] palette;
 
         if (bits < 9) {
             int paletteSize = buffer.readVarInt();
-            palette = new BlockState[paletteSize];
+            palette = new int[paletteSize];
             for (int i = 0; i < paletteSize; i++) {
-                palette[i] = Block.REGISTRY_ID.fromId(buffer.readVarInt());
+                palette[i] = buffer.readVarInt();
             }
         } else {
             palette = null;
@@ -34,8 +32,8 @@ public class VirtualChunkSection {
 
 
         for (int index = 0; index < BLOCK_COUNT; index++) {
-            int paletteIndex = storage.get(index); // Индекс в палете
-            BlockState state = palette == null ? Blocks.AIR.getBlockData() : palette[paletteIndex];
+            int paletteIndex = storage.get(index);
+            int state = palette == null ? 0 : palette[paletteIndex];
             blockStates[index] = new VirtualBlock(state);
         }
     }
@@ -52,7 +50,7 @@ public class VirtualChunkSection {
         return blockStates[index(x, y, z)];
     }
 
-    public void setBlockState(int x, int y, int z, BlockState state) {
+    public void setBlockState(int x, int y, int z, int state) {
         if (x < 0 || x >= 16 || y < 0 || y >= 16 || z < 0 || z >= 16) {
             throw new IllegalArgumentException("Coordinates out of bounds: " + x + ", " + y + ", " + z);
         }
@@ -73,7 +71,7 @@ public class VirtualChunkSection {
             var1 = new long[var3];
         }
 
-        for(int var4 = 0; var4 < var1.length; ++var4) {
+        for (int var4 = 0; var4 < var1.length; ++var4) {
             var1[var4] = buf.readLong();
         }
 

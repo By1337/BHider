@@ -29,6 +29,10 @@ public class BlockShapes {
         return BOXES[Block.REGISTRY_ID.getId(state)];
     }
 
+    public static BlockBox getBox(int x) {
+        return x < 0 || x >= BOXES.length ? BlockBox.EMPTY : BOXES[x];
+    }
+
     static {
         SKIP_TYPES = EnumSet.noneOf(Material.class);
         for (Material value : Material.values()) {

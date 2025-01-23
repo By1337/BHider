@@ -1,6 +1,7 @@
 package dev.by1337.hider.shapes;
 
 import org.by1337.blib.geom.Vec3d;
+import org.jetbrains.annotations.Contract;
 
 public class DefaultBlockBox implements BlockBox {
     public final Vec3d min;
@@ -44,15 +45,13 @@ public class DefaultBlockBox implements BlockBox {
         double tMin = Math.max(Math.max(Math.min(t1, t2), Math.min(t3, t4)), Math.min(t5, t6));
         double tMax = Math.min(Math.min(Math.max(t1, t2), Math.max(t3, t4)), Math.max(t5, t6));
 
-        if (tMax < 0 || tMin > tMax) {
-            return false; // Нет пересечения
-        }
-        return true; // Есть пересечение
+        return !(tMax < 0) && !(tMin > tMax);
     }
 
 
 
-    public BlockBox offset(Vec3d offset) {
-        return new DefaultBlockBox(min.add(offset), max.add(offset));
+    @Contract(value = "_, _, _ -> new", pure = true)
+    public BlockBox offset(int x, int y, int z) {
+        return new DefaultBlockBox(min.add(x, y, z), max.add(x, y, z));
     }
 }

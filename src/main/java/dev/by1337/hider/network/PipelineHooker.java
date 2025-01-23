@@ -7,6 +7,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -29,8 +30,8 @@ public class PipelineHooker implements Listener, Closeable {
         Channel channel = ((CraftPlayer) player).getHandle().playerConnection.networkManager.channel;
         if (channel.pipeline().get(OutPacketListener.NAME) != null)
             unhook(player);
-        // client <- prepender <- compress <- bhider_encoder <- bhider_listener <- encoder
-        channel.pipeline().addAfter("compress", OutPacketListener.NAME, new OutPacketListener(player, plugin, channel));
+        // client <- prepender <- compress <- bhider_encoder <- bhider_listener <- via-encoder <- encoder <- generate packet
+        channel.pipeline().addBefore("encoder", OutPacketListener.NAME, new OutPacketListener(player, plugin, channel));
         channel.pipeline().addBefore(OutPacketListener.NAME, CustomPacketEncoder.NAME, new CustomPacketEncoder());
         StringBuilder sb = new StringBuilder();
         sb.append("client <- ");
@@ -56,7 +57,7 @@ public class PipelineHooker implements Listener, Closeable {
         channel.pipeline().remove(CustomPacketEncoder.NAME);
     }
 
-    @EventHandler
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
     public void onJoin(PlayerJoinEvent event) {
         hook(event.getPlayer());
     }
