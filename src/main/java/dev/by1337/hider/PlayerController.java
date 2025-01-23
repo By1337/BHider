@@ -9,7 +9,11 @@ import dev.by1337.hider.world.VirtualWorld;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
+import net.minecraft.network.ConnectionProtocol;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.protocol.PacketFlow;
+import net.minecraft.network.protocol.game.ClientboundLightUpdatePacket;
+import net.minecraft.network.protocol.game.ClientboundSetTimePacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
@@ -101,13 +105,15 @@ public class PlayerController implements Closeable {
             onPacket(new BlockUpdatePacket(in, new FriendlyByteBuf(out)));
         } else if (packetId == PacketIds.EXPLODE_PACKET) {
             onPacket(new ExplodePacket(in, new FriendlyByteBuf(out)));
+        } else if (packetId == PacketIds.REMOVE_ENTITIES_PACKET) {
+            onPacket(new RemoveEntitiesPacket(in, new FriendlyByteBuf(out)));
         } else {
-//            Packet<?> packet = ConnectionProtocol.PLAY.createPacket(PacketFlow.CLIENTBOUND, packetId);
-//            if (
-//                    !(packet instanceof ClientboundLightUpdatePacket) &&
-//                            !(packet instanceof ClientboundSetTimePacket)
-//                            && packet != null)
-//               // logger.info(packet.getClass().getName());
+            var packet = ConnectionProtocol.PLAY.createPacket(PacketFlow.CLIENTBOUND, packetId);
+            if (
+                    !(packet instanceof ClientboundLightUpdatePacket) &&
+                            !(packet instanceof ClientboundSetTimePacket)
+                            && packet != null)
+                logger.info(packet.getClass().getName());
 
 
             in0.resetReaderIndex();
@@ -152,6 +158,14 @@ public class PlayerController implements Closeable {
             packet1.writeOut();
         } else if (packet instanceof ExplodePacket packet1) {
             packet1.toBlow().forEach(pos -> level.setBlock(pos.getX(), pos.getY(), pos.getZ(), 0));
+            packet1.writeOut();
+        } else if (packet instanceof RemoveEntitiesPacket packet1) {
+            for (int entityId : packet1.getEntityIds()) {
+                var v = viewingPlayers.remove(entityId);
+                if (v != null) {
+                    logger.info("Remove {}", v);
+                }
+            }
             packet1.writeOut();
         } else {
             packet.writeOut();

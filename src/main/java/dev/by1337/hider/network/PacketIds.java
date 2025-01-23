@@ -19,6 +19,7 @@ public class PacketIds {
     public static int SECTION_BLOCKS_UPDATE = getId(new ClientboundSectionBlocksUpdatePacket());
     public static int BLOCK_UPDATE_PACKET = getId(new ClientboundBlockUpdatePacket());
     public static int EXPLODE_PACKET = getId(new ClientboundExplodePacket());
+    public static int REMOVE_ENTITIES_PACKET = getId(new ClientboundRemoveEntitiesPacket());
 
     private static int getId(Packet<?> packet) {
         return Objects.requireNonNull(ConnectionProtocol.PLAY.getPacketId(PacketFlow.CLIENTBOUND, packet));
