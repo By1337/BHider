@@ -7,6 +7,7 @@ import dev.by1337.hider.mutator.SetEquipmentPacketMutator;
 import dev.by1337.hider.network.PacketIds;
 import dev.by1337.hider.network.packet.*;
 import dev.by1337.hider.shapes.BlockBox;
+import dev.by1337.hider.shapes.BlockShapes;
 import dev.by1337.hider.util.BoolWatcher;
 import dev.by1337.hider.world.VirtualWorld;
 import io.netty.buffer.ByteBuf;
@@ -50,12 +51,13 @@ public class PlayerController implements Closeable {
     private final BukkitTask task;
     public final Channel channel;
     public final ServerPlayer client;
-    public final VirtualWorld level = new VirtualWorld();
+    public final VirtualWorld level;
     public final Config config;
 
-    public PlayerController(Player player, Plugin plugin, UUID uuid, Channel channel, Config config) {
+    public PlayerController(Player player, Plugin plugin, UUID uuid, Channel channel, Config config, BlockShapes blockShapes) {
         this.plugin = plugin;
         this.uuid = uuid;
+        level = new VirtualWorld(blockShapes);
         logger = LoggerFactory.getLogger(player.getName());
         //  task = plugin.getServer().getScheduler().runTaskTimerAsynchronously(plugin, this::tick, 1, 1);
         task = plugin.getServer().getScheduler().runTaskTimer(plugin, this::tick, 1, 1); // todo make async

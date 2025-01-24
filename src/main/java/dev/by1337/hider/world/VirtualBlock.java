@@ -10,14 +10,13 @@ public class VirtualBlock {
     private BlockState state;
     private BlockBox box;
 
-
     public VirtualBlock(final int id) {
         this.id = id;
     }
 
-    public BlockBox box(int x, int y, int z) {
+    public BlockBox box(int x, int y, int z, BlockShapes shapes) {
         if (box != null) return box;
-        return box = BlockShapes.getBox(id).offset(x, y, z);
+        return box = shapes.getBox(id).offset(x, y, z);
     }
 
     public BlockState state() {

@@ -2,19 +2,24 @@ package dev.by1337.hider.config;
 
 import blib.com.mojang.serialization.Codec;
 import blib.com.mojang.serialization.codecs.RecordCodecBuilder;
+import org.bukkit.Material;
+import org.by1337.blib.configuration.serialization.BukkitCodecs;
 import org.by1337.blib.geom.Vec3d;
 
 import java.util.*;
 
 public class Config {
     public static final Codec<Config> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-            ArmorHideSettings.CODEC.fieldOf("armor_hide").forGetter(v -> v.armorHide)
+            ArmorHideSettings.CODEC.fieldOf("armor_hide").forGetter(v -> v.armorHide),
+            BukkitCodecs.MATERIAL.listOf().fieldOf("ignore_blocks").forGetter(v -> v.ignoreBlocks)
     ).apply(instance, Config::new));
 
     public final ArmorHideSettings armorHide;
+    public final List<Material> ignoreBlocks;
 
-    public Config(ArmorHideSettings armorHide) {
+    public Config(ArmorHideSettings armorHide, List<Material> ignoreBlocks) {
         this.armorHide = armorHide;
+        this.ignoreBlocks = ignoreBlocks;
     }
 
     public static class ArmorHideSettings {

@@ -18,39 +18,19 @@ import java.util.EnumSet;
 import java.util.List;
 
 public class BlockShapes {
-    private static final EnumSet<Material> SKIP_TYPES;
-    private static final BlockBox[] BOXES;
+    private  final EnumSet<Material> skipTypes;
+    private  final BlockBox[] boxes;
 
-    public static void load() {
-        System.out.println("BlockShapes.load");
-    }
-
-    public static BlockBox getBox(BlockState state) {
-        return BOXES[Block.REGISTRY_ID.getId(state)];
-    }
-
-    public static BlockBox getBox(int x) {
-        return x < 0 || x >= BOXES.length ? BlockBox.EMPTY : BOXES[x];
-    }
-
-    static {
-        SKIP_TYPES = EnumSet.noneOf(Material.class);
-        for (Material value : Material.values()) {
-            if (value.isLegacy()) continue;
-            if (value.isAir() || value.name().contains("GLASS")) {
-                SKIP_TYPES.add(value);
-            }
-        }
-        SKIP_TYPES.add(Material.LAVA);
-        SKIP_TYPES.add(Material.WATER);
-        SKIP_TYPES.add(Material.BUBBLE_COLUMN);
+    public BlockShapes(List<Material> ignoreTypes) {
+        skipTypes = EnumSet.noneOf(Material.class);
+        skipTypes.addAll(ignoreTypes);
 
 
-        BOXES = new BlockBox[Block.REGISTRY_ID.size()];
+        boxes = new BlockBox[Block.REGISTRY_ID.size()];
 
         for (BlockState state : Block.REGISTRY_ID) {
-            if (SKIP_TYPES.contains(state.getBukkitMaterial())) {
-                BOXES[Block.REGISTRY_ID.getId(state)] = BlockBox.EMPTY;
+            if (skipTypes.contains(state.getBukkitMaterial())) {
+                boxes[Block.REGISTRY_ID.getId(state)] = BlockBox.EMPTY;
                 continue;
             }
 
@@ -82,20 +62,28 @@ public class BlockShapes {
             }, new BlockPos(0, 0, 0));
 
             if (sp.isEmpty()) {
-                BOXES[Block.REGISTRY_ID.getId(state)] = BlockBox.EMPTY;
+                boxes[Block.REGISTRY_ID.getId(state)] = BlockBox.EMPTY;
             } else {
                 var aabbs = sp.toAabbs();
                 if (aabbs.size() == 1) {
-                    BOXES[Block.REGISTRY_ID.getId(state)] = fromAABB(aabbs.get(0));
+                    boxes[Block.REGISTRY_ID.getId(state)] = fromAABB(aabbs.get(0));
                 } else if (aabbs.size() > 1) {
                     List<DefaultBlockBox> boxes = new ArrayList<>();
                     aabbs.forEach(aabb -> boxes.add(fromAABB(aabb)));
-                    BOXES[Block.REGISTRY_ID.getId(state)] = new ListBlockBox(boxes);
+                    this.boxes[Block.REGISTRY_ID.getId(state)] = new ListBlockBox(boxes);
                 } else {
-                    BOXES[Block.REGISTRY_ID.getId(state)] = BlockBox.EMPTY;
+                    boxes[Block.REGISTRY_ID.getId(state)] = BlockBox.EMPTY;
                 }
             }
         }
+    }
+
+    public  BlockBox getBox(BlockState state) {
+        return boxes[Block.REGISTRY_ID.getId(state)];
+    }
+
+    public  BlockBox getBox(int x) {
+        return x < 0 || x >= boxes.length ? BlockBox.EMPTY : boxes[x];
     }
 
     private static DefaultBlockBox fromAABB(AABB aabb) {

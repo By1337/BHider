@@ -17,13 +17,13 @@ public class BHider extends JavaPlugin {
     @Override
     public void onLoad() {
         super.onLoad();
-        BlockShapes.load();
     }
 
     @Override
     public void onEnable() {
         Config config = ResourceUtil.load("config.yml", this).get().decode(Config.CODEC).getOrThrow().getFirst();
-        pipelineHooker = new PipelineHooker(this, config);
+        BlockShapes blockShapes = new BlockShapes(config.ignoreBlocks);
+        pipelineHooker = new PipelineHooker(this, config, blockShapes);
     }
 
     @Override

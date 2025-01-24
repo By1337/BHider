@@ -2,6 +2,7 @@ package dev.by1337.hider.network;
 
 import dev.by1337.hider.PlayerController;
 import dev.by1337.hider.config.Config;
+import dev.by1337.hider.shapes.BlockShapes;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
@@ -15,14 +16,15 @@ public class OutPacketListener extends MessageToByteEncoder<ByteBuf> implements 
     public static final String NAME = "bhider_listener";
     private final PlayerController playerController;
 
-    public OutPacketListener(Player player, Plugin plugin, Channel channel, Config config) {
+    public OutPacketListener(Player player, Plugin plugin, Channel channel, Config config, BlockShapes blockShapes) {
 
         this.playerController = new PlayerController(
                 player,
                 plugin,
                 player.getUniqueId(),
                 channel,
-                config
+                config,
+                blockShapes
         );
     }
 

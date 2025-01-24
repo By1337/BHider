@@ -2,6 +2,7 @@ package dev.by1337.hider.world;
 
 import dev.by1337.hider.network.packet.LevelChunkPacket;
 import dev.by1337.hider.shapes.BlockBox;
+import dev.by1337.hider.shapes.BlockShapes;
 import io.netty.buffer.Unpooled;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.minecraft.network.FriendlyByteBuf;
@@ -13,9 +14,16 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public class VirtualWorld {
-    public static final BlockState AIR = Blocks.AIR.getBlockData();
+    private static final BlockState AIR = Blocks.AIR.getBlockData();
+
     private final Long2ObjectOpenHashMap<VirtualChunk> chunks = new Long2ObjectOpenHashMap<>(8192, 0.5F);
-    private static final VirtualChunk[] lastLoadedChunks = new VirtualChunk[16];
+    private final VirtualChunk[] lastLoadedChunks = new VirtualChunk[16];
+
+    private final BlockShapes blockShapes;
+
+    public VirtualWorld(BlockShapes blockShapes) {
+        this.blockShapes = blockShapes;
+    }
 
     @Nullable
     public VirtualChunk getChunk(int x, int z) {
@@ -83,7 +91,7 @@ public class VirtualWorld {
     @NotNull
     public BlockBox getBlockBox(int x, int y, int z) {
         var v = getVirtualBlock(x, y, z);
-        return v == null ? BlockBox.EMPTY : v.box(x, y, z);
+        return v == null ? BlockBox.EMPTY : v.box(x, y, z, blockShapes);
     }
 
     public void setBlock0(int x, int y, int z, BlockState state) {
