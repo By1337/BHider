@@ -1,6 +1,8 @@
 package dev.by1337.hider;
 
 import com.mojang.datafixers.util.Pair;
+import dev.by1337.hider.config.Config;
+import dev.by1337.hider.engine.RayTraceToPlayerEngine;
 import dev.by1337.hider.mutator.SetEquipmentPacketMutator;
 import dev.by1337.hider.network.PacketIds;
 import dev.by1337.hider.network.packet.*;
@@ -15,11 +17,15 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.ClientboundLightUpdatePacket;
 import net.minecraft.network.protocol.game.ClientboundSetTimePacket;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.BlockGetter;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
+import org.bukkit.Color;
+import org.bukkit.Particle;
 import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
@@ -42,11 +48,12 @@ public class PlayerController implements Closeable {
     private final UUID uuid;
     private final Map<Integer, PlayerData> viewingPlayers = new ConcurrentHashMap<>();
     private final BukkitTask task;
-    private final Channel channel;
-    private final ServerPlayer client;
-    private final VirtualWorld level = new VirtualWorld();
+    public final Channel channel;
+    public final ServerPlayer client;
+    public final VirtualWorld level = new VirtualWorld();
+    public final Config config;
 
-    public PlayerController(Player player, Plugin plugin, UUID uuid, Channel channel) {
+    public PlayerController(Player player, Plugin plugin, UUID uuid, Channel channel, Config config) {
         this.plugin = plugin;
         this.uuid = uuid;
         logger = LoggerFactory.getLogger(player.getName());
@@ -54,6 +61,7 @@ public class PlayerController implements Closeable {
         task = plugin.getServer().getScheduler().runTaskTimer(plugin, this::tick, 1, 1); // todo make async
         this.channel = channel;
         this.client = ((CraftPlayer) player).getHandle();
+        this.config = config;
     }
 
     private void tick() {
@@ -112,7 +120,7 @@ public class PlayerController implements Closeable {
                     !(packet instanceof ClientboundLightUpdatePacket) &&
                             !(packet instanceof ClientboundSetTimePacket)
                             && packet != null)
-                logger.info(packet.getClass().getName());
+                //logger.info(packet.getClass().getName());
 
 
             in0.resetReaderIndex();
@@ -177,15 +185,16 @@ public class PlayerController implements Closeable {
     }
 
     public class PlayerData {
-        private final int entityId;
-        private final UUID uuid;
-        private double x;
-        private double y;
-        private double z;
+        public final int entityId;
+        public final UUID uuid;
+        public double x;
+        public double y;
+        public double z;
         private final Map<EquipmentSlot, ItemStack> equipment = new HashMap<>();
         private final BoolWatcher hideArmor = new BoolWatcher(false);
-        private final ServerPlayer player;
+        public final ServerPlayer player;
         private boolean suppressArmorUpdate;
+        private final RayTraceToPlayerEngine rayTraceEngine;
 
         public PlayerData(AddPlayerPacket packet) {
             entityId = packet.entityId();
@@ -194,9 +203,15 @@ public class PlayerController implements Closeable {
             y = packet.y();
             z = packet.z();
             player = ((CraftPlayer) Bukkit.getPlayer(uuid)).getHandle();
+            rayTraceEngine = new RayTraceToPlayerEngine(PlayerController.this, this);
         }
 
         public void tick() {
+            hideArmorTick();
+        }
+
+        private void hideArmorTick() {
+            if (config.armorHide.disableWorlds.contains(((ServerLevel) client.world).worldDataServer.getName())) return;
             long l = System.nanoTime();
             hideArmor.set(!isVisible());
             long l1 = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - l);
@@ -217,69 +232,12 @@ public class PlayerController implements Closeable {
         }
 
         public boolean isVisible() {
-            Vec3d clientEye = new Vec3d(client.lastX, client.getHeadY(), client.lastZ);
-            var aabb = player.getBoundingBox().expand(.2d, .2d, .2d);
-            Vec3d playerCenter = new Vec3d(aabb.maxX + aabb.minX, aabb.maxY + aabb.minY, aabb.maxZ + aabb.minZ).divide(2);
+            var clientEye = client.getBukkitEntity().getEyeLocation();
+            Vector directionToTarget = player.getBukkitEntity().getLocation().add(0, -0.5, 0)
+                    .toVector().subtract(clientEye.toVector()).normalize();
+            if (directionToTarget.angle(clientEye.getDirection()) >= config.armorHide.fieldOfView) return false;
 
-            var dir = client.getBukkitEntity().getLocation().getDirection();
-            Vector directionToTarget = playerCenter.add(0, -0.5, 0).toVector().subtract(clientEye.toVector()).normalize();
-
-
-            if (directionToTarget.angle(dir) >= 1.7) return false;
-
-            List<Vec3d> positions = new ArrayList<>(List.of(
-                    new Vec3d(aabb.minX, aabb.minY, aabb.minZ).sub(clientEye).normalize(),
-                    new Vec3d(aabb.minX, aabb.maxY, aabb.minZ).sub(clientEye).normalize(),
-                    new Vec3d(aabb.maxX, aabb.maxY, aabb.minZ).sub(clientEye).normalize(),
-                    new Vec3d(aabb.maxX, aabb.minY, aabb.minZ).sub(clientEye).normalize(),
-                    new Vec3d(aabb.minX, aabb.minY, aabb.maxZ).sub(clientEye).normalize(),
-                    new Vec3d(aabb.minX, aabb.maxY, aabb.maxZ).sub(clientEye).normalize(),
-                    new Vec3d(aabb.maxX, aabb.maxY, aabb.maxZ).sub(clientEye).normalize(),
-                    new Vec3d(aabb.maxX, aabb.minY, aabb.maxZ).sub(clientEye).normalize(),
-                    playerCenter.sub(clientEye).normalize(),
-                    playerCenter.add(0.6, 0, 0).sub(clientEye).normalize(),
-                    playerCenter.add(-0.6, 0, 0).sub(clientEye).normalize(),
-                    playerCenter.add(0, 0, 0.6).sub(clientEye).normalize(),
-                    playerCenter.add(0, 0, -0.6).sub(clientEye).normalize()
-            ));
-            Predicate<BlockBox> test = box -> {
-                positions.removeIf(p -> box.rayIntersects(clientEye, p));
-                return positions.isEmpty();
-            };
-            return !testBlocksOnLine(clientEye, new Vec3d(aabb.minX, aabb.minY, aabb.minZ), test);
-        }
-
-        private boolean testBlocksOnLine(Vec3d rayOrigin, Vec3d rayEnd, Predicate<BlockBox> test) {
-            Vec3d rayDirection = rayEnd.sub(rayOrigin).normalize();
-
-            double x = rayOrigin.x;
-            double y = rayOrigin.y;
-            double z = rayOrigin.z;
-
-
-            double maxDistance = rayOrigin.distance(rayEnd);
-            double step = 0.1;
-            double distance = 0;
-
-            while (distance < maxDistance) {
-                Vec3i block = new Vec3d(x, y, z).toBlockPos();
-
-                for (int offsetX = -1; offsetX <= 1; offsetX++) {
-                    for (int offsetY = -1; offsetY <= 1; offsetY++) {
-                        for (int offsetZ = -1; offsetZ <= 1; offsetZ++) {
-                            if (test.test(level.getBlockBox(block.x + offsetX, block.y + offsetY, block.z + offsetZ))) {
-                                return true;
-                            }
-                        }
-                    }
-                }
-
-                x += rayDirection.x * step;
-                y += rayDirection.y * step;
-                z += rayDirection.z * step;
-                distance += step;
-            }
-            return false;
+            return rayTraceEngine.noneMatch();
         }
 
         public void onMove(MoveEntityPacket packet) {
@@ -304,7 +262,8 @@ public class PlayerController implements Closeable {
                 packet.setCanceled(true);
                 return;
             }
-            SetEquipmentPacketMutator.obfuscate(packet);
+            if (config.armorHide.hideMeta)
+                SetEquipmentPacketMutator.obfuscate(packet);
         }
 
         public void hideArmor() {
