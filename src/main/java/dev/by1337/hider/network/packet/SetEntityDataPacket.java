@@ -29,6 +29,11 @@ public class SetEntityDataPacket extends Packet {
         }, entityId);
     }
 
+    @Override
+    public int getEntity() {
+        return entityId.get();
+    }
+
     public int packetId() {
         return packetId.get();
     }

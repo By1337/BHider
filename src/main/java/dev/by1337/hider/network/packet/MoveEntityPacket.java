@@ -35,6 +35,11 @@ public abstract class MoveEntityPacket extends Packet {
         this.out = out;
     }
 
+    @Override
+    public int getEntity() {
+        return entityId.get();
+    }
+
     public void setPacketId(final int id) {
         modified = true;
         packetId.set(id);

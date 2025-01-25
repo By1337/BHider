@@ -79,6 +79,11 @@ public class SetEquipmentPacket extends Packet {
     }
 
     @Override
+    public int getEntity() {
+        return entityId.get();
+    }
+
+    @Override
     public void setOut(FriendlyByteBuf out) {
         this.out = out;
     }

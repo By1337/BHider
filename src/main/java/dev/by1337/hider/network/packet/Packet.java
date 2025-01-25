@@ -23,4 +23,8 @@ public abstract class Packet {
     protected abstract FriendlyByteBuf getOut();
 
     public abstract void setOut(FriendlyByteBuf out);
+
+    public int getEntity(){
+        return -1;
+    }
 }

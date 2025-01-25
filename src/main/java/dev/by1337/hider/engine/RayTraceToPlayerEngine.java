@@ -1,6 +1,7 @@
 package dev.by1337.hider.engine;
 
 import dev.by1337.hider.PlayerController;
+import dev.by1337.hider.controller.ViewingEntity;
 import dev.by1337.hider.shapes.BlockBox;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.AABB;
@@ -14,7 +15,7 @@ import java.util.ArrayList;
 public class RayTraceToPlayerEngine {
     private static final RayDirectionCreator[] RAY_DIRECTIONS;
     private final PlayerController controller;
-    private final PlayerController.PlayerData player;
+    private final ViewingEntity viewingEntity;
 
     private @Nullable Vec3d lastClientPos;
     private @Nullable Vec3d lastPlayerPos;
@@ -24,9 +25,9 @@ public class RayTraceToPlayerEngine {
 
     private @Nullable RayDirectionCreator lastDirection;
 
-    public RayTraceToPlayerEngine(PlayerController controller, PlayerController.PlayerData player) {
+    public RayTraceToPlayerEngine(PlayerController controller, ViewingEntity viewingEntity) {
         this.controller = controller;
-        this.player = player;
+        this.viewingEntity = viewingEntity;
 
     }
 
@@ -40,7 +41,7 @@ public class RayTraceToPlayerEngine {
     private boolean noneMatch0() {
         ServerPlayer client = controller.client;
         Vec3d clientPos = new Vec3d(client.lastX, client.getHeadY(), client.lastZ);
-        Vec3d playerPos = new Vec3d(player.x, player.y, player.z);
+        Vec3d playerPos = new Vec3d(viewingEntity.getBukkitEntity().getLocation());
 
         if (clientPos.equals(lastClientPos) && playerPos.equals(lastPlayerPos)) {
             return lastState;
@@ -51,7 +52,7 @@ public class RayTraceToPlayerEngine {
         Vec3d clientEye = new Vec3d(client.lastX, client.getHeadY(), client.lastZ);
 
         var extraSize = controller.config.armorHide.expandAabb;
-        var aabb = player.player.getBoundingBox().expand(extraSize.x, extraSize.y, extraSize.z);
+        var aabb = viewingEntity.getAABB().expand(extraSize.x, extraSize.y, extraSize.z);
         Vec3d playerCenter = new Vec3d(aabb.maxX + aabb.minX, aabb.maxY + aabb.minY, aabb.maxZ + aabb.minZ).divide(2);
 
         blockBoxes.clear();

@@ -52,6 +52,11 @@ public class AddPlayerPacket extends Packet {
     }
 
     @Override
+    public int getEntity() {
+        return entityId.get();
+    }
+
+    @Override
     public void setOut(FriendlyByteBuf out) {
         this.out = out;
     }
