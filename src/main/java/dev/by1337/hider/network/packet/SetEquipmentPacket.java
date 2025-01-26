@@ -12,16 +12,15 @@ import java.util.List;
 
 public class SetEquipmentPacket extends Packet {
     private final FriendlyByteBuf in;
-    private FriendlyByteBuf out;
 
     private final LazyLoad<Integer> packetId;
     private final LazyLoad<Integer> entityId;
     private final LazyLoad<List<Pair<EquipmentSlot, ItemStack>>> slots;
 
 
-    public SetEquipmentPacket(final FriendlyByteBuf in, FriendlyByteBuf out) {
+    public SetEquipmentPacket(final FriendlyByteBuf in) {
         this.in = in;
-        this.out = out;
+
         packetId = new LazyLoad<>(in::readVarInt_, null);
         entityId = new LazyLoad<>(in::readVarInt_, packetId);
         slots = new LazyLoad<>(this::readSlots, entityId);
@@ -47,7 +46,7 @@ public class SetEquipmentPacket extends Packet {
         return Collections.unmodifiableList(result);
     }
 
-    private void writeSlots() {
+    private void writeSlots(FriendlyByteBuf out) {
         var slots = this.slots.get();
         int var1 = slots.size();
 
@@ -62,35 +61,24 @@ public class SetEquipmentPacket extends Packet {
     }
 
     @Override
-    protected FriendlyByteBuf writeOut() {
+    protected void write0(FriendlyByteBuf out) {
         if (!slots.isModified() && !entityId.isModified()) {
             in.resetReaderIndex();
             out.writeBytes(in);
-            return out;
+            return;
         }
         out.writeVarInt(packetId.get());
         out.writeVarInt(entityId.get());
         if (!slots.isModified()) {
             out.writeBytes(in);
         } else {
-            writeSlots();
+            writeSlots(out);
         }
-        return out;
     }
 
     @Override
     public int getEntity() {
         return entityId.get();
-    }
-
-    @Override
-    public void setOut(FriendlyByteBuf out) {
-        this.out = out;
-    }
-
-    @Override
-    protected FriendlyByteBuf getOut() {
-        return out;
     }
 
     public int packetId() {

@@ -10,7 +10,6 @@ import java.util.List;
 
 public class ExplodePacket extends Packet {
     private final FriendlyByteBuf in;
-    private FriendlyByteBuf out;
 
     private final LazyLoad<Integer> packetId;
     private final LazyLoad<Double> x;
@@ -23,9 +22,9 @@ public class ExplodePacket extends Packet {
     private final LazyLoad<Float> knockbackZ;
 
 
-    public ExplodePacket(final FriendlyByteBuf in, FriendlyByteBuf out) {
+    public ExplodePacket(final FriendlyByteBuf in) {
         this.in = in;
-        this.out = out;
+
         packetId = new LazyLoad<>(in::readVarInt_, null);
         x = new LazyLoad<>(() -> (double) in.readFloat(), packetId);
         y = new LazyLoad<>(() -> (double) in.readFloat(), x);
@@ -51,20 +50,9 @@ public class ExplodePacket extends Packet {
     }
 
     @Override
-    protected FriendlyByteBuf writeOut() {
+    protected void write0(FriendlyByteBuf out) {
         in.resetReaderIndex();
         out.writeBytes(in);
-        return out;
-    }
-
-    @Override
-    public void setOut(FriendlyByteBuf out) {
-        this.out = out;
-    }
-
-    @Override
-    protected FriendlyByteBuf getOut() {
-        return out;
     }
 
     public double x() {

@@ -11,7 +11,6 @@ import java.util.List;
 
 public class LevelChunkPacket extends Packet {
     private final FriendlyByteBuf in;
-    private FriendlyByteBuf out;
 
     private final LazyLoad<Integer> packetId;
     private final LazyLoad<Integer> x;
@@ -23,9 +22,9 @@ public class LevelChunkPacket extends Packet {
     private final LazyLoad<List<CompoundTag>> blockEntitiesTags;
     private final LazyLoad<Boolean> fullChunk;
 
-    public LevelChunkPacket(final FriendlyByteBuf in, FriendlyByteBuf out) {
+    public LevelChunkPacket(final FriendlyByteBuf in) {
         this.in = in;
-        this.out = out;
+
         packetId = new LazyLoad<>(in::readVarInt_, null);
         x = new LazyLoad<>(in::readInt, packetId);
         z = new LazyLoad<>(in::readInt, x);
@@ -57,24 +56,13 @@ public class LevelChunkPacket extends Packet {
 
 
     @Override
-    protected FriendlyByteBuf writeOut() {
+    protected void write0(FriendlyByteBuf out) {
         in.resetReaderIndex();
         out.writeBytes(in);
         // этот пакет ломается если сначала его прочитать, а потом писать.
         // Поэтому мы сначала его пишем, а потом читаем для этого здесь нужен resetReaderIndex
         // todo если сообщение выше не актуально то удали отсюда in.resetReaderIndex();
         in.resetReaderIndex();
-        return out;
-    }
-
-    @Override
-    public void setOut(FriendlyByteBuf out) {
-        this.out = out;
-    }
-
-    @Override
-    protected FriendlyByteBuf getOut() {
-        return out;
     }
 
     public int packetId() {

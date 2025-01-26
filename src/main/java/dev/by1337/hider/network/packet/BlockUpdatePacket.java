@@ -6,16 +6,14 @@ import net.minecraft.network.FriendlyByteBuf;
 
 public class BlockUpdatePacket extends Packet {
     private final FriendlyByteBuf in;
-    private FriendlyByteBuf out;
 
     private final LazyLoad<Integer> packetId;
     private final LazyLoad<BlockPos> pos;
     private final LazyLoad<Integer> block;
 
 
-    public BlockUpdatePacket(final FriendlyByteBuf in, FriendlyByteBuf out) {
+    public BlockUpdatePacket(final FriendlyByteBuf in) {
         this.in = in;
-        this.out = out;
         packetId = new LazyLoad<>(in::readVarInt_, null);
 
         pos = new LazyLoad<>(in::readBlockPos, packetId);
@@ -23,20 +21,9 @@ public class BlockUpdatePacket extends Packet {
     }
 
     @Override
-    protected FriendlyByteBuf writeOut() {
+    protected void write0(FriendlyByteBuf out) {
         in.resetReaderIndex();
         out.writeBytes(in);
-        return out;
-    }
-
-    @Override
-    public void setOut(FriendlyByteBuf out) {
-        this.out = out;
-    }
-
-    @Override
-    protected FriendlyByteBuf getOut() {
-        return out;
     }
 
     public BlockPos getPos() {

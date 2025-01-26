@@ -5,7 +5,6 @@ import net.minecraft.network.FriendlyByteBuf;
 
 public abstract class MoveEntityPacket extends Packet {
     protected final FriendlyByteBuf in;
-    protected FriendlyByteBuf out;
 
     protected final LazyLoad<Integer> packetId;
     protected final LazyLoad<Integer> entityId;
@@ -17,22 +16,11 @@ public abstract class MoveEntityPacket extends Packet {
     protected LazyLoad<Boolean> onGround;
     protected boolean modified;
 
-    public MoveEntityPacket(final FriendlyByteBuf in, FriendlyByteBuf out) {
+    public MoveEntityPacket(final FriendlyByteBuf in) {
         this.in = in;
-        this.out = out;
+
         packetId = new LazyLoad<>(in::readVarInt_, null);
         entityId = new LazyLoad<>(in::readVarInt_, packetId);
-    }
-
-
-    @Override
-    protected FriendlyByteBuf getOut() {
-        return out;
-    }
-
-    @Override
-    public void setOut(FriendlyByteBuf out) {
-        this.out = out;
     }
 
     @Override
@@ -114,8 +102,8 @@ public abstract class MoveEntityPacket extends Packet {
 
     public static class Pos extends MoveEntityPacket {
 
-        public Pos(FriendlyByteBuf in, FriendlyByteBuf out) {
-            super(in, out);
+        public Pos(FriendlyByteBuf in) {
+            super(in);
             xa = new LazyLoad<>(in::readShort, entityId);
             ya = new LazyLoad<>(in::readShort, xa);
             za = new LazyLoad<>(in::readShort, ya);
@@ -123,11 +111,11 @@ public abstract class MoveEntityPacket extends Packet {
         }
 
         @Override
-        protected FriendlyByteBuf writeOut() {
+        protected void write0(FriendlyByteBuf out) {
             if (!modified) {
                 in.resetReaderIndex();
                 out.writeBytes(in);
-                return out;
+                return;
             }
             out.writeVarInt(this.packetId.get());
             out.writeVarInt(this.entityId.get());
@@ -135,39 +123,39 @@ public abstract class MoveEntityPacket extends Packet {
             out.writeShort(this.ya.get());
             out.writeShort(this.za.get());
             out.writeBoolean(this.onGround.get());
-            return out;
+            return;
         }
     }
 
     public static class Rot extends MoveEntityPacket {
 
-        public Rot(FriendlyByteBuf in, FriendlyByteBuf out) {
-            super(in, out);
+        public Rot(FriendlyByteBuf in) {
+            super(in);
             yRot = new LazyLoad<>(in::readByte, entityId);
             xRot = new LazyLoad<>(in::readByte, yRot);
             onGround = new LazyLoad<>(in::readBoolean, xRot);
         }
 
         @Override
-        protected FriendlyByteBuf writeOut() {
+        protected void write0(FriendlyByteBuf out) {
             if (!modified) {
                 in.resetReaderIndex();
                 out.writeBytes(in);
-                return out;
+                return;
             }
             out.writeVarInt(this.packetId.get());
             out.writeVarInt(this.entityId.get());
             out.writeByte(this.yRot.get());
             out.writeByte(this.xRot.get());
             out.writeBoolean(this.onGround.get());
-            return out;
+            return;
         }
     }
 
     public static class PosRot extends MoveEntityPacket {
 
-        public PosRot(FriendlyByteBuf in, FriendlyByteBuf out) {
-            super(in, out);
+        public PosRot(FriendlyByteBuf in) {
+            super(in);
             xa = new LazyLoad<>(in::readShort, xa);
             ya = new LazyLoad<>(in::readShort, xa);
             za = new LazyLoad<>(in::readShort, ya);
@@ -178,11 +166,11 @@ public abstract class MoveEntityPacket extends Packet {
         }
 
         @Override
-        protected FriendlyByteBuf writeOut() {
+        protected void write0(FriendlyByteBuf out) {
             if (!modified) {
                 in.resetReaderIndex();
                 out.writeBytes(in);
-                return out;
+                return;
             }
             out.writeVarInt(this.packetId.get());
             out.writeVarInt(this.entityId.get());
@@ -192,7 +180,7 @@ public abstract class MoveEntityPacket extends Packet {
             out.writeByte(this.yRot.get());
             out.writeByte(this.xRot.get());
             out.writeBoolean(this.onGround.get());
-            return out;
+            return;
         }
     }
 }

@@ -13,16 +13,13 @@ public abstract class Packet {
         this.canceled = canceled;
     }
 
-    public void write() {
+    public void write(FriendlyByteBuf out) {
         if (canceled) return;
-        writeOut();
+        write0(out);
     }
 
-    protected abstract FriendlyByteBuf writeOut();
+    protected abstract void write0(FriendlyByteBuf out);
 
-    protected abstract FriendlyByteBuf getOut();
-
-    public abstract void setOut(FriendlyByteBuf out);
 
     public int getEntity(){
         return -1;

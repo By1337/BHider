@@ -7,7 +7,6 @@ import java.util.UUID;
 
 public class AddPlayerPacket extends Packet {
     private final FriendlyByteBuf in;
-    private FriendlyByteBuf out;
 
     private final LazyLoad<Integer> packetId;
     private final LazyLoad<Integer> entityId;
@@ -18,9 +17,8 @@ public class AddPlayerPacket extends Packet {
     private final LazyLoad<Byte> yRot;
     private final LazyLoad<Byte> xRot;
 
-    public AddPlayerPacket(final FriendlyByteBuf in, final FriendlyByteBuf out) {
+    public AddPlayerPacket(final FriendlyByteBuf in) {
         this.in = in;
-        this.out = out;
 
         packetId = new LazyLoad<>(in::readVarInt_, null);
         this.entityId = new LazyLoad<>(in::readVarInt_, packetId);
@@ -31,14 +29,13 @@ public class AddPlayerPacket extends Packet {
         this.yRot = new LazyLoad<>(in::readByte, z);
         this.xRot = new LazyLoad<>(in::readByte, yRot);
     }
-
     @Override
-    protected FriendlyByteBuf writeOut() {
+    protected void write0(FriendlyByteBuf out) {
         if (!entityId.isModified() && !playerId.isModified() && !x.isModified() && !y.isModified() &&
                 !z.isModified() && !yRot.isModified() && !xRot.isModified()) {
             in.resetReaderIndex();
             out.writeBytes(in);
-            return out;
+            return;
         }
         out.writeVarInt(packetId.get());
         out.writeVarInt(entityId.get());
@@ -48,22 +45,11 @@ public class AddPlayerPacket extends Packet {
         out.writeDouble(z.get());
         out.writeByte(yRot.get());
         out.writeByte(xRot.get());
-        return out;
     }
 
     @Override
     public int getEntity() {
         return entityId.get();
-    }
-
-    @Override
-    public void setOut(FriendlyByteBuf out) {
-        this.out = out;
-    }
-
-    @Override
-    protected FriendlyByteBuf getOut() {
-        return out;
     }
 
     public int packetId() {

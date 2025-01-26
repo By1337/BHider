@@ -59,13 +59,14 @@ public class PlayerController implements Closeable {
         }
     }
 
-    public void onPacket(ChannelHandlerContext ctx, ByteBuf in0, ByteBuf out) {
+    public void onPacket(ChannelHandlerContext ctx, ByteBuf in0, ByteBuf out0) {
         FriendlyByteBuf in = new FriendlyByteBuf(in0);
+        FriendlyByteBuf out = new FriendlyByteBuf(out0);
         int packetId = in.readVarInt_();
         in.resetReaderIndex();
         PacketIds.PacketCreator creator = PacketIds.getCreator(packetId);
         if (creator != null) {
-            onPacket(creator.create(in, new FriendlyByteBuf(out)));
+            onPacket(creator.create(in), out);
         } else {
             var packet = ConnectionProtocol.PLAY.createPacket(PacketFlow.CLIENTBOUND, packetId);
             if (
@@ -75,18 +76,18 @@ public class PlayerController implements Closeable {
                 //logger.info(packet.getClass().getName());
 
                 in0.resetReaderIndex();
-            out.writeBytes(in0);
+            out0.writeBytes(in0);
         }
     }
 
-    private void onPacket(dev.by1337.hider.network.packet.Packet packet) {
+    private void onPacket(dev.by1337.hider.network.packet.Packet packet, FriendlyByteBuf out) {
         long l = System.nanoTime();
         if (packet instanceof AddPlayerPacket addPlayerPacket) {
             ViewingPlayer playerData = new ViewingPlayer(this, addPlayerPacket);
             System.out.println(playerData);
             viewingEntities.put(playerData.entityId, playerData);
         }  else if (packet instanceof LevelChunkPacket packet1) {
-            packet1.write(); // todo хз пакет ломается если его сначала прочитать
+            packet1.write(out); // todo хз пакет ломается если его сначала прочитать
             packet1.setCanceled(true); // отменяем чтобы повторно не записать пакет в байт буфер
             level.readChunk(packet1);
         } else if (packet instanceof ForgetLevelChunkPacket packet1) {
@@ -109,7 +110,7 @@ public class PlayerController implements Closeable {
                 viewingEntity.onPacket(packet);
             }
         }
-        packet.write();
+        packet.write(out);
         long time = (System.nanoTime() - l) / 1_000_000;
         if (time < 1) {
             //   logger.info("Packet {} {} ms.", packet.getClass().getSimpleName(), time);

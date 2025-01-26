@@ -10,7 +10,6 @@ import java.util.function.BiConsumer;
 
 public class SectionBlocksUpdatePacket extends Packet {
     private final FriendlyByteBuf in;
-    private FriendlyByteBuf out;
 
     private final LazyLoad<Integer> packetId;
 
@@ -19,9 +18,9 @@ public class SectionBlocksUpdatePacket extends Packet {
     private final LazyLoad<Boolean> suppressLightUpdates;
 
 
-    public SectionBlocksUpdatePacket(final FriendlyByteBuf in, FriendlyByteBuf out) {
+    public SectionBlocksUpdatePacket(final FriendlyByteBuf in) {
         this.in = in;
-        this.out = out;
+
         packetId = new LazyLoad<>(in::readVarInt_, null);
         sectionPos = new LazyLoad<>(() -> SectionPos.of(in.readLong()), packetId);
         suppressLightUpdates = new LazyLoad<>(in::readBoolean, sectionPos);
@@ -41,20 +40,9 @@ public class SectionBlocksUpdatePacket extends Packet {
     }
 
     @Override
-    protected FriendlyByteBuf writeOut() {
+    protected void write0(FriendlyByteBuf out) {
         in.resetReaderIndex();
         out.writeBytes(in);
-        return out;
-    }
-
-    @Override
-    public void setOut(FriendlyByteBuf out) {
-        this.out = out;
-    }
-
-    @Override
-    protected FriendlyByteBuf getOut() {
-        return out;
     }
 
     public SectionPos getSectionPos() {

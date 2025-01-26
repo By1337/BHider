@@ -9,6 +9,7 @@ import dev.by1337.hider.network.PacketIds;
 import dev.by1337.hider.network.packet.*;
 import dev.by1337.hider.util.BoolWatcher;
 import io.netty.channel.Channel;
+import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -33,12 +34,15 @@ public class ViewingPlayer implements ViewingEntity {
     public final UUID uuid;
     private final Map<EquipmentSlot, ItemStack> equipment = new HashMap<>();
     private final BoolWatcher hideArmor = new BoolWatcher(false);
+    private final BoolWatcher fullHide = new BoolWatcher(false);
     public final ServerPlayer player;
     public final ServerPlayer client;
     private boolean suppressArmorUpdate;
+    private boolean suppressUpdate;
     private final RayTraceToPlayerEngine rayTraceEngine;
     private final Config config;
     public final Channel channel;
+    private final double fieldOfView;
 
     public ViewingPlayer(PlayerController clientController, AddPlayerPacket packet) {
         this.clientController = clientController;
@@ -49,6 +53,7 @@ public class ViewingPlayer implements ViewingEntity {
         client = clientController.client;
         player = ((CraftPlayer) Bukkit.getPlayer(uuid)).getHandle();
         config = clientController.config;
+        fieldOfView = config.armorHide.fieldOfView;
         rayTraceEngine = new RayTraceToPlayerEngine(clientController, this);
     }
 
@@ -56,16 +61,20 @@ public class ViewingPlayer implements ViewingEntity {
     public void onPacket(Packet packet) {
         if (packet instanceof MoveEntityPacket) {
             onMove((MoveEntityPacket) packet);
+            if (suppressUpdate) packet.setCanceled(true);
         } else if (packet instanceof SetEquipmentPacket) {
             setEquipmentPacket((SetEquipmentPacket) packet);
+            if (suppressUpdate) packet.setCanceled(true);
         } else if (packet instanceof SetEntityDataPacket) {
             setEntityDataPacket((SetEntityDataPacket) packet);
+            if (suppressUpdate) packet.setCanceled(true);
         }
     }
 
     @Override
     public void tick(long tick) {
-        hideArmorTick();
+        //hideArmorTick();
+        visibleTick();
     }
 
     @Override
@@ -78,7 +87,26 @@ public class ViewingPlayer implements ViewingEntity {
         return player.getBoundingBox();
     }
 
+    private void visibleTick() {
+
+        fullHide.set(player.isSneaking() && !isVisible());
+
+        if (fullHide.isDirty()) {
+            if (fullHide.get()) {
+                suppressUpdate = true;
+                channel.writeAndFlush(new RemoveEntitiesPacket(entityId));
+            } else {
+                suppressUpdate = false;
+                channel.writeAndFlush(player.getAddEntityPacket());
+                channel.writeAndFlush(new ClientboundSetEntityDataPacket(entityId, player.getDataWatcher(), true));
+                sendActualEquip(); // todo hide armor check
+            }
+            fullHide.setDirty(false);
+        }
+    }
+
     private void hideArmorTick() {
+        if (equipment.isEmpty()) return;
         if (config.armorHide.disableWorlds.contains(((ServerLevel) client.world).worldDataServer.getName())) return;
         long l = System.nanoTime();
         hideArmor.set(!isVisible());
@@ -99,34 +127,32 @@ public class ViewingPlayer implements ViewingEntity {
         }
     }
 
+
     public boolean isVisible() {
         var clientEye = client.getBukkitEntity().getEyeLocation();
         Vector directionToTarget = player.getBukkitEntity().getLocation().add(0, -0.5, 0)
                 .toVector().subtract(clientEye.toVector()).normalize();
-        if (directionToTarget.angle(clientEye.getDirection()) >= config.armorHide.fieldOfView) return false;
+        if (directionToTarget.angle(clientEye.getDirection()) >= fieldOfView) return false;
 
         return rayTraceEngine.noneMatch();
     }
 
     private void onMove(MoveEntityPacket packet) {
-        System.out.println("ViewingPlayer.onMove");
     }
 
 
     private void setEntityDataPacket(SetEntityDataPacket packet) {
-        System.out.println("ViewingPlayer.setEntityDataPacket");
         //  isShift = me.isSneaking();
         //  isGlowing = me.isGlowing();
     }
 
     private void setEquipmentPacket(SetEquipmentPacket packet) {
-        System.out.println("ViewingPlayer.setEquipmentPacket");
         var list = packet.slots();
         for (Pair<EquipmentSlot, ItemStack> pair : list) {
             equipment.put(pair.getFirst(), pair.getSecond());
         }
         equipment.entrySet().removeIf(e -> e.getValue().isEmpty());
-        if (suppressArmorUpdate) {
+        if (suppressArmorUpdate || suppressUpdate) {
             packet.setCanceled(true);
             return;
         }
@@ -134,8 +160,7 @@ public class ViewingPlayer implements ViewingEntity {
             SetEquipmentPacketMutator.obfuscate(packet);
     }
 
-    public void hideArmor() {
-        logger.info("PlayerData.hideArmor");
+    private void hideArmor() {
         suppressArmorUpdate = true;
         SetEquipmentPacket equipmentPacket = new SetEquipmentPacket(
                 PacketIds.SET_EQUIPMENT_PACKET,
@@ -145,9 +170,12 @@ public class ViewingPlayer implements ViewingEntity {
         channel.writeAndFlush(equipmentPacket);
     }
 
-    public void unhideArmor() {
-        logger.info("PlayerData.unhideArmor");
+    private void unhideArmor() {
         suppressArmorUpdate = false;
+        sendActualEquip();
+    }
+
+    private void sendActualEquip() {
         if (equipment.isEmpty()) return;
         SetEquipmentPacket equipmentPacket = new SetEquipmentPacket(
                 PacketIds.SET_EQUIPMENT_PACKET,

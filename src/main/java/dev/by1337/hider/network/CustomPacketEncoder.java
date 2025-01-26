@@ -11,7 +11,6 @@ public class CustomPacketEncoder extends MessageToByteEncoder<Packet> {
 
     @Override
     protected void encode(ChannelHandlerContext ctx, Packet packet, ByteBuf buf) throws Exception {
-        packet.setOut(new FriendlyByteBuf(buf));
-        packet.write();
+        packet.write(new FriendlyByteBuf(buf));
     }
 }

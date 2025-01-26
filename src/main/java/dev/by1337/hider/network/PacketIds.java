@@ -53,6 +53,6 @@ public class PacketIds {
     }
 
     public interface PacketCreator {
-        dev.by1337.hider.network.packet.Packet create(FriendlyByteBuf in, FriendlyByteBuf out);
+        dev.by1337.hider.network.packet.Packet create(FriendlyByteBuf in);
     }
 }

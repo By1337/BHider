@@ -9,15 +9,14 @@ import java.util.List;
 
 public class SetEntityDataPacket extends Packet {
     private final FriendlyByteBuf in;
-    private FriendlyByteBuf out;
 
     private final LazyLoad<Integer> packetId;
     private final LazyLoad<Integer> entityId;
     private final LazyLoad<List<SynchedEntityData.DataItem<?>>> packedItems;
 
-    public SetEntityDataPacket(FriendlyByteBuf in, FriendlyByteBuf out) {
+    public SetEntityDataPacket(FriendlyByteBuf in) {
         this.in = in;
-        this.out = out;
+
         packetId = new LazyLoad<>(in::readVarInt_, null);
         entityId = new LazyLoad<>(in::readVarInt_, packetId);
         packedItems = new LazyLoad<>(() -> {
@@ -59,11 +58,11 @@ public class SetEntityDataPacket extends Packet {
     }
 
     @Override
-    protected FriendlyByteBuf writeOut() {
+    protected void write0(FriendlyByteBuf out) {
         if (!entityId.isModified() && !packedItems.isModified()) {
             in.resetReaderIndex();
             out.writeBytes(in);
-            return out;
+            return;
         }
         out.writeVarInt(packetId.get());
         out.writeVarInt(entityId.get());
@@ -76,16 +75,5 @@ public class SetEntityDataPacket extends Packet {
                 throw new RuntimeException(e);
             }
         }
-        return out;
-    }
-
-    @Override
-    protected FriendlyByteBuf getOut() {
-        return out;
-    }
-
-    @Override
-    public void setOut(FriendlyByteBuf out) {
-        this.out = out;
     }
 }
