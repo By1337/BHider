@@ -66,6 +66,12 @@ public class ViewingPlayer implements ViewingEntity {
         } else if (packet instanceof SetEntityDataPacket) {
             setEntityDataPacket((SetEntityDataPacket) packet);
             if (suppressUpdate) packet.setCanceled(true);
+        } else if (packet instanceof RotateHeadPacket) {
+            if (suppressUpdate) packet.setCanceled(true);
+        } else if (packet instanceof TeleportEntityPacket) {
+            if (suppressUpdate) packet.setCanceled(true);
+        } else if (packet instanceof AnimatePacket) {
+            if (suppressUpdate) packet.setCanceled(true);
         }
     }
 
@@ -107,6 +113,10 @@ public class ViewingPlayer implements ViewingEntity {
                 channel.writeAndFlush(new SetEntityDataPacket(
                         entityId,
                         player.getDataWatcher().getAll()
+                ));
+                channel.writeAndFlush(new RotateHeadPacket(
+                        entityId,
+                        (byte) ((int) (player.yaw * 256.0F / 360.0F))
                 ));
                 sendActualEquip(); // todo hide armor check
             }

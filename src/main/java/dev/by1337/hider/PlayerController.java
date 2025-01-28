@@ -73,7 +73,7 @@ public class PlayerController implements Closeable {
                     !(packet instanceof ClientboundLightUpdatePacket) &&
                             !(packet instanceof ClientboundSetTimePacket)
                             && packet != null)
-                //logger.info(packet.getClass().getName());
+                logger.info(packet.getClass().getName());
 
                 in0.resetReaderIndex();
             out0.writeBytes(in0);

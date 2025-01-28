@@ -25,6 +25,9 @@ public class PacketIds {
     public static int BLOCK_UPDATE_PACKET = getId(new ClientboundBlockUpdatePacket());
     public static int EXPLODE_PACKET = getId(new ClientboundExplodePacket());
     public static int REMOVE_ENTITIES_PACKET = getId(new ClientboundRemoveEntitiesPacket());
+    public static int ROTATE_HEAD_PACKET = getId(new ClientboundRotateHeadPacket());
+    public static int TELEPORT_ENTITY_PACKET = getId(new ClientboundTeleportEntityPacket());
+    public static int ANIMATE_PACKET = getId(new ClientboundAnimatePacket());
 
     private static final Map<Integer, PacketCreator> packetCreators = new HashMap<>();
 
@@ -50,6 +53,9 @@ public class PacketIds {
         packetCreators.put(BLOCK_UPDATE_PACKET, BlockUpdatePacket::new);
         packetCreators.put(EXPLODE_PACKET, ExplodePacket::new);
         packetCreators.put(REMOVE_ENTITIES_PACKET, RemoveEntitiesPacket::new);
+        packetCreators.put(ROTATE_HEAD_PACKET, RotateHeadPacket::new);
+        packetCreators.put(TELEPORT_ENTITY_PACKET, TeleportEntityPacket::new);
+        packetCreators.put(ANIMATE_PACKET, AnimatePacket::new);
     }
 
     public interface PacketCreator {
