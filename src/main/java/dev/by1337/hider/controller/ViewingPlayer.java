@@ -5,11 +5,9 @@ import dev.by1337.hider.PlayerController;
 import dev.by1337.hider.config.Config;
 import dev.by1337.hider.engine.RayTraceToPlayerEngine;
 import dev.by1337.hider.mutator.SetEquipmentPacketMutator;
-import dev.by1337.hider.network.PacketIds;
 import dev.by1337.hider.network.packet.*;
 import dev.by1337.hider.util.BoolWatcher;
 import io.netty.channel.Channel;
-import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -97,8 +95,19 @@ public class ViewingPlayer implements ViewingEntity {
                 channel.writeAndFlush(new RemoveEntitiesPacket(entityId));
             } else {
                 suppressUpdate = false;
-                channel.writeAndFlush(player.getAddEntityPacket());
-                channel.writeAndFlush(new ClientboundSetEntityDataPacket(entityId, player.getDataWatcher(), true));
+                channel.writeAndFlush(new AddPlayerPacket(
+                        entityId,
+                        uuid,
+                        player.locX(),
+                        player.locY(),
+                        player.locZ(),
+                        (byte) ((int) (player.yaw * 256.0F / 360.0F)),
+                        (byte) ((int) (player.pitch * 256.0F / 360.0F))
+                ));
+                channel.writeAndFlush(new SetEntityDataPacket(
+                        entityId,
+                        player.getDataWatcher().getAll()
+                ));
                 sendActualEquip(); // todo hide armor check
             }
             fullHide.setDirty(false);
@@ -163,7 +172,6 @@ public class ViewingPlayer implements ViewingEntity {
     private void hideArmor() {
         suppressArmorUpdate = true;
         SetEquipmentPacket equipmentPacket = new SetEquipmentPacket(
-                PacketIds.SET_EQUIPMENT_PACKET,
                 entityId,
                 SetEquipmentPacketMutator.EMPTY_EQUIPMENTS
         );
@@ -178,7 +186,6 @@ public class ViewingPlayer implements ViewingEntity {
     private void sendActualEquip() {
         if (equipment.isEmpty()) return;
         SetEquipmentPacket equipmentPacket = new SetEquipmentPacket(
-                PacketIds.SET_EQUIPMENT_PACKET,
                 entityId,
                 equipment.entrySet().stream().map(e -> Pair.of(e.getKey(), e.getValue())).toList()
         );

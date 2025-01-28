@@ -1,6 +1,7 @@
 package dev.by1337.hider.network.packet;
 
 import dev.by1337.hider.util.LazyLoad;
+import dev.by1337.hider.util.ValueHolder;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.level.chunk.ChunkBiomeContainer;
@@ -12,15 +13,15 @@ import java.util.List;
 public class LevelChunkPacket extends Packet {
     private final FriendlyByteBuf in;
 
-    private final LazyLoad<Integer> packetId;
-    private final LazyLoad<Integer> x;
-    private final LazyLoad<Integer> z;
-    private final LazyLoad<Integer> availableSections;
-    private final LazyLoad<CompoundTag> heightmaps;
-    private final LazyLoad<int @Nullable []> biomes;
-    private final LazyLoad<byte[]> buffer;
-    private final LazyLoad<List<CompoundTag>> blockEntitiesTags;
-    private final LazyLoad<Boolean> fullChunk;
+    private final ValueHolder<Integer> packetId;
+    private final ValueHolder<Integer> x;
+    private final ValueHolder<Integer> z;
+    private final ValueHolder<Integer> availableSections;
+    private final ValueHolder<CompoundTag> heightmaps;
+    private final ValueHolder<int @Nullable []> biomes;
+    private final ValueHolder<byte[]> buffer;
+    private final ValueHolder<List<CompoundTag>> blockEntitiesTags;
+    private final ValueHolder<Boolean> fullChunk;
 
     public LevelChunkPacket(final FriendlyByteBuf in) {
         this.in = in;

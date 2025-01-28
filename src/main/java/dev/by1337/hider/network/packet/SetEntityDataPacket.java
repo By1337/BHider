@@ -1,18 +1,25 @@
 package dev.by1337.hider.network.packet;
 
+import dev.by1337.hider.network.PacketIds;
 import dev.by1337.hider.util.LazyLoad;
+import dev.by1337.hider.util.ValueHolder;
+import dev.by1337.hider.util.WrappedValueHolder;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.syncher.SynchedEntityData;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.util.List;
 
 public class SetEntityDataPacket extends Packet {
-    private final FriendlyByteBuf in;
+    private static final ValueHolder<Integer> PACKET_ID_HOLDER = WrappedValueHolder.of(PacketIds.SET_ENTITY_DATA_PACKET);
+    private final @Nullable FriendlyByteBuf in;
 
-    private final LazyLoad<Integer> packetId;
-    private final LazyLoad<Integer> entityId;
-    private final LazyLoad<List<SynchedEntityData.DataItem<?>>> packedItems;
+    private final ValueHolder<Integer> packetId;
+    private final ValueHolder<Integer> entityId;
+    private final ValueHolder<List<SynchedEntityData.DataItem<?>>> packedItems;
+    private boolean modified;
+
 
     public SetEntityDataPacket(FriendlyByteBuf in) {
         this.in = in;
@@ -26,6 +33,13 @@ public class SetEntityDataPacket extends Packet {
                 throw new RuntimeException(e);
             }
         }, entityId);
+    }
+
+    public SetEntityDataPacket(int entity, List<SynchedEntityData.DataItem<?>> packedItems) {
+        in = null;
+        packetId = PACKET_ID_HOLDER;
+        entityId = WrappedValueHolder.of(entity);
+        this.packedItems = WrappedValueHolder.of(packedItems);
     }
 
     @Override
@@ -47,33 +61,32 @@ public class SetEntityDataPacket extends Packet {
 
     public void setPacketId(int id) {
         packetId.set(id);
+        modified = true;
     }
 
     public void setEntityId(int id) {
         entityId.set(id);
+        modified = true;
     }
 
     public void setPackedItems(List<SynchedEntityData.DataItem<?>> items) {
         packedItems.set(items);
+        modified = true;
     }
 
     @Override
     protected void write0(FriendlyByteBuf out) {
-        if (!entityId.isModified() && !packedItems.isModified()) {
+        if (in != null && !modified) {
             in.resetReaderIndex();
             out.writeBytes(in);
             return;
         }
         out.writeVarInt(packetId.get());
         out.writeVarInt(entityId.get());
-        if (!packedItems.isModified()) {
-            out.writeBytes(in);
-        } else {
-            try {
-                SynchedEntityData.pack(this.packedItems.get(), out);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+        try {
+            SynchedEntityData.pack(this.packedItems.get(), out);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 }

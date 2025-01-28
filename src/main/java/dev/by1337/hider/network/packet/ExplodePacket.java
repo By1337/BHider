@@ -1,25 +1,27 @@
 package dev.by1337.hider.network.packet;
 
 import dev.by1337.hider.util.LazyLoad;
+import dev.by1337.hider.util.ValueHolder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.util.Mth;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class ExplodePacket extends Packet {
-    private final FriendlyByteBuf in;
+    private final @Nullable FriendlyByteBuf in;
 
-    private final LazyLoad<Integer> packetId;
-    private final LazyLoad<Double> x;
-    private final LazyLoad<Double> y;
-    private final LazyLoad<Double> z;
-    private final LazyLoad<Float> power;
-    private final LazyLoad<List<BlockPos>> toBlow;
-    private final LazyLoad<Float> knockbackX;
-    private final LazyLoad<Float> knockbackY;
-    private final LazyLoad<Float> knockbackZ;
+    private final ValueHolder<Integer> packetId;
+    private final ValueHolder<Double> x;
+    private final ValueHolder<Double> y;
+    private final ValueHolder<Double> z;
+    private final ValueHolder<Float> power;
+    private final ValueHolder<List<BlockPos>> toBlow;
+    private final ValueHolder<Float> knockbackX;
+    private final ValueHolder<Float> knockbackY;
+    private final ValueHolder<Float> knockbackZ;
 
 
     public ExplodePacket(final FriendlyByteBuf in) {
@@ -51,8 +53,12 @@ public class ExplodePacket extends Packet {
 
     @Override
     protected void write0(FriendlyByteBuf out) {
-        in.resetReaderIndex();
-        out.writeBytes(in);
+        if (in != null) {
+            in.resetReaderIndex();
+            out.writeBytes(in);
+        } else {
+            throw new IllegalArgumentException("Can't serialize ExplodePacket");
+        }
     }
 
     public double x() {
@@ -74,12 +80,15 @@ public class ExplodePacket extends Packet {
     public List<BlockPos> toBlow() {
         return toBlow.get();
     }
+
     public float knockbackX() {
         return knockbackX.get();
     }
+
     public float knockbackY() {
         return knockbackY.get();
     }
+
     public float knockbackZ() {
         return knockbackZ.get();
     }

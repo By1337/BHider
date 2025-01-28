@@ -2,14 +2,18 @@ package dev.by1337.hider.network.packet;
 
 import dev.by1337.hider.network.PacketIds;
 import dev.by1337.hider.util.LazyLoad;
+import dev.by1337.hider.util.ValueHolder;
+import dev.by1337.hider.util.WrappedValueHolder;
 import net.minecraft.network.FriendlyByteBuf;
+import org.jetbrains.annotations.Nullable;
 
 public class RemoveEntitiesPacket extends Packet {
-    private final FriendlyByteBuf in;
+    private static final ValueHolder<Integer> PACKET_ID_HOLDER = WrappedValueHolder.of(PacketIds.REMOVE_ENTITIES_PACKET);
+    private final @Nullable FriendlyByteBuf in;
 
-    private final LazyLoad<Integer> packetId;
-    private final LazyLoad<int[]> entityIds;
-
+    private final ValueHolder<Integer> packetId;
+    private final ValueHolder<int[]> entityIds;
+    private boolean modified;
 
     public RemoveEntitiesPacket(final FriendlyByteBuf in) {
         this.in = in;
@@ -28,13 +32,13 @@ public class RemoveEntitiesPacket extends Packet {
 
     public RemoveEntitiesPacket(int... ids) {
         in = null;
-        this.packetId = new LazyLoad<>(() -> PacketIds.REMOVE_ENTITIES_PACKET, null, true);
-        this.entityIds = new LazyLoad<>(() -> ids, packetId, true);
+        this.packetId = PACKET_ID_HOLDER;
+        this.entityIds = WrappedValueHolder.of(ids);
     }
 
     @Override
     protected void write0(FriendlyByteBuf out) {
-        if (packetId.isModified() || entityIds.isModified()) {
+        if (in == null || modified) {
             out.writeVarInt(packetId.get());
             int[] ids = entityIds.get();
             out.writeVarInt(ids.length);
@@ -45,12 +49,15 @@ public class RemoveEntitiesPacket extends Packet {
             in.resetReaderIndex();
             out.writeBytes(in);
         }
-
-        return;
     }
 
     public int[] getEntityIds() {
         return entityIds.get();
+    }
+
+    public void setEntityIds(int... ids) {
+        entityIds.set(ids);
+        modified = true;
     }
 
 }

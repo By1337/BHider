@@ -1,36 +1,41 @@
 package dev.by1337.hider.network.packet;
 
 import com.mojang.datafixers.util.Pair;
+import dev.by1337.hider.network.PacketIds;
 import dev.by1337.hider.util.LazyLoad;
+import dev.by1337.hider.util.ValueHolder;
+import dev.by1337.hider.util.WrappedValueHolder;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 public class SetEquipmentPacket extends Packet {
-    private final FriendlyByteBuf in;
+    private static final ValueHolder<Integer> PACKET_ID_HOLDER = WrappedValueHolder.of(PacketIds.SET_EQUIPMENT_PACKET);
+    private final @Nullable FriendlyByteBuf in;
 
-    private final LazyLoad<Integer> packetId;
-    private final LazyLoad<Integer> entityId;
-    private final LazyLoad<List<Pair<EquipmentSlot, ItemStack>>> slots;
+    private final ValueHolder<Integer> packetId;
+    private final ValueHolder<Integer> entityId;
+    private final ValueHolder<List<Pair<EquipmentSlot, ItemStack>>> slots;
+    private boolean modified;
 
 
     public SetEquipmentPacket(final FriendlyByteBuf in) {
         this.in = in;
-
         packetId = new LazyLoad<>(in::readVarInt_, null);
         entityId = new LazyLoad<>(in::readVarInt_, packetId);
         slots = new LazyLoad<>(this::readSlots, entityId);
     }
 
-    public SetEquipmentPacket(int packetId, int entityId, List<Pair<EquipmentSlot, ItemStack>> slots) {
+    public SetEquipmentPacket(int entityId, List<Pair<EquipmentSlot, ItemStack>> slots) {
         in = null;
-        this.packetId = new LazyLoad<>(() -> packetId, null, true);
-        this.entityId = new LazyLoad<>(() -> entityId, null, true);
-        this.slots = new LazyLoad<>(() -> slots, null, true);
+        this.packetId = PACKET_ID_HOLDER;
+        this.entityId = WrappedValueHolder.of(entityId);
+        this.slots = WrappedValueHolder.of(slots);
     }
 
     private List<Pair<EquipmentSlot, ItemStack>> readSlots() {
@@ -62,18 +67,14 @@ public class SetEquipmentPacket extends Packet {
 
     @Override
     protected void write0(FriendlyByteBuf out) {
-        if (!slots.isModified() && !entityId.isModified()) {
+        if (in != null && !modified) {
             in.resetReaderIndex();
             out.writeBytes(in);
             return;
         }
         out.writeVarInt(packetId.get());
         out.writeVarInt(entityId.get());
-        if (!slots.isModified()) {
-            out.writeBytes(in);
-        } else {
-            writeSlots(out);
-        }
+        writeSlots(out);
     }
 
     @Override
@@ -93,15 +94,13 @@ public class SetEquipmentPacket extends Packet {
         return slots.get();
     }
 
-    public void setPacketId(int packetId) {
-        this.packetId.set(packetId);
-    }
-
     public void setEntityId(int entityId) {
         this.entityId.set(entityId);
+        modified = true;
     }
 
     public void setSlots(List<Pair<EquipmentSlot, ItemStack>> slots) {
         this.slots.set(slots);
+        modified = true;
     }
 }

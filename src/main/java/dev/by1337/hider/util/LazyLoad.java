@@ -5,28 +5,21 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Supplier;
 
-public class LazyLoad<T> {
+public class LazyLoad<T> extends ValueHolder<T> {
     private final Supplier<@NotNull T> supplier;
-    private T value;
-    private boolean modified;
     private boolean loaded;
-    private final @Nullable LazyLoad<?> loadBefore;
+    private final @Nullable Supplier<?> loadBefore;
 
-    public LazyLoad(Supplier<T> supplier, @Nullable LazyLoad<?> loadBefore) {
+    public LazyLoad(Supplier<T> supplier, @Nullable Supplier<?> loadBefore) {
         this.supplier = supplier;
         this.loadBefore = loadBefore;
-    }
-    public LazyLoad(Supplier<T> supplier, @Nullable LazyLoad<?> loadBefore, boolean modified) {
-        this.supplier = supplier;
-        this.loadBefore = loadBefore;
-        this.modified = modified;
     }
 
     public T get() {
-        if (loadBefore != null && !loadBefore.loaded) {
+        if (loadBefore instanceof LazyLoad<?> lazyLoad && !lazyLoad.loaded) {
             loadBefore.get();
         }
-        if (!loaded){
+        if (!loaded) {
             value = supplier.get();
             loaded = true;
         }
@@ -35,11 +28,6 @@ public class LazyLoad<T> {
 
     public void set(T value) {
         this.value = value;
-        modified = true;
-    }
-
-    public boolean isModified() {
-        return modified;
     }
 
     public boolean isLoaded() {

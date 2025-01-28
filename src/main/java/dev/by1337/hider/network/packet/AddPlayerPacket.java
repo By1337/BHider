@@ -1,21 +1,27 @@
 package dev.by1337.hider.network.packet;
 
+import dev.by1337.hider.network.PacketIds;
 import dev.by1337.hider.util.LazyLoad;
+import dev.by1337.hider.util.ValueHolder;
+import dev.by1337.hider.util.WrappedValueHolder;
 import net.minecraft.network.FriendlyByteBuf;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
 
 public class AddPlayerPacket extends Packet {
-    private final FriendlyByteBuf in;
+    private static final ValueHolder<Integer> PACKET_ID_HOLDER = WrappedValueHolder.of(PacketIds.ADD_PLAYER);
+    private final @Nullable FriendlyByteBuf in;
 
-    private final LazyLoad<Integer> packetId;
-    private final LazyLoad<Integer> entityId;
-    private final LazyLoad<UUID> playerId;
-    private final LazyLoad<Double> x;
-    private final LazyLoad<Double> y;
-    private final LazyLoad<Double> z;
-    private final LazyLoad<Byte> yRot;
-    private final LazyLoad<Byte> xRot;
+    private final ValueHolder<Integer> packetId;
+    private final ValueHolder<Integer> entityId;
+    private final ValueHolder<UUID> playerId;
+    private final ValueHolder<Double> x;
+    private final ValueHolder<Double> y;
+    private final ValueHolder<Double> z;
+    private final ValueHolder<Byte> yRot;
+    private final ValueHolder<Byte> xRot;
+    private boolean modified;
 
     public AddPlayerPacket(final FriendlyByteBuf in) {
         this.in = in;
@@ -29,10 +35,22 @@ public class AddPlayerPacket extends Packet {
         this.yRot = new LazyLoad<>(in::readByte, z);
         this.xRot = new LazyLoad<>(in::readByte, yRot);
     }
+
+    public AddPlayerPacket(int entityId, UUID playerId, double x, double y, double z, byte yRot, byte xRot) {
+        in = null;
+        packetId = PACKET_ID_HOLDER;
+        this.entityId = WrappedValueHolder.of(entityId);
+        this.playerId = WrappedValueHolder.of(playerId);
+        this.x = WrappedValueHolder.of(x);
+        this.y = WrappedValueHolder.of(y);
+        this.z = WrappedValueHolder.of(z);
+        this.yRot = WrappedValueHolder.of(yRot);
+        this.xRot = WrappedValueHolder.of(xRot);
+    }
+
     @Override
     protected void write0(FriendlyByteBuf out) {
-        if (!entityId.isModified() && !playerId.isModified() && !x.isModified() && !y.isModified() &&
-                !z.isModified() && !yRot.isModified() && !xRot.isModified()) {
+        if (in != null && !modified) {
             in.resetReaderIndex();
             out.writeBytes(in);
             return;
@@ -84,35 +102,38 @@ public class AddPlayerPacket extends Packet {
         return xRot.get();
     }
 
-    public void setPacketId(final int id) {
-        packetId.set(id);
-    }
-
     public void setEntityId(final int id) {
         entityId.set(id);
+        modified = true;
     }
 
     public void setPlayerId(final UUID id) {
         playerId.set(id);
+        modified = true;
     }
 
     public void setX(final double x) {
         this.x.set(x);
+        modified = true;
     }
 
     public void setY(final double y) {
         this.y.set(y);
+        modified = true;
     }
 
     public void setZ(final double z) {
         this.z.set(z);
+        modified = true;
     }
 
     public void setYRot(final byte yRot) {
         this.yRot.set(yRot);
+        modified = true;
     }
 
     public void setXRot(final byte xRot) {
         this.xRot.set(xRot);
+        modified = true;
     }
 }

@@ -51,10 +51,6 @@ public class VirtualWorld {
         chunks.remove(pair(x, z));
     }
 
-    public void unloadChunk(final Vec2i pos) {
-        unloadChunk(pos.x, pos.y);
-    }
-
     public void readChunk(LevelChunkPacket packet) {
         Vec2i pos = new Vec2i(packet.x(), packet.z());
         VirtualChunk virtualChunk = new VirtualChunk(pos.x, pos.y);
@@ -94,7 +90,7 @@ public class VirtualWorld {
         return v == null ? BlockBox.EMPTY : v.box(x, y, z, blockShapes);
     }
 
-    public void setBlock0(int x, int y, int z, BlockState state) {
+    public void setBlock(int x, int y, int z, BlockState state) {
         setBlock(x, y, z, Block.REGISTRY_ID.getId_(state));
     }
 
