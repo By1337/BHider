@@ -45,7 +45,7 @@ public class SetEquipmentPacketMutator {
         FAKE_ENCHANTMENTS = new ListTag();
         CompoundTag enchantments = new CompoundTag();
         enchantments.setShort("lvl", (short) 0);
-        enchantments.setString("id", "bhider:hided");
+        enchantments.setString("id", "by1337:bhider");
         FAKE_ENCHANTMENTS.add(enchantments);
 
         EMPTY_EQUIPMENTS = new ArrayList<>();

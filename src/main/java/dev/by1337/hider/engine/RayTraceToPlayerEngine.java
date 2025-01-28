@@ -28,7 +28,6 @@ public class RayTraceToPlayerEngine {
     public RayTraceToPlayerEngine(PlayerController controller, ViewingEntity viewingEntity) {
         this.controller = controller;
         this.viewingEntity = viewingEntity;
-
     }
 
     public boolean noneMatch() {
@@ -83,6 +82,20 @@ public class RayTraceToPlayerEngine {
         return false;
     }
 
+    /**
+     * Collects all blocks along a path from the starting point to the endpoint, including surrounding blocks.
+     * <p>
+     * This method is designed to achieve up to 74% uniqueness in the worst-case scenario, making it highly efficient
+     * for use cases where it is invoked every tick for each player. Due to performance concerns, a {@link HashSet}
+     * is not used, as it is less efficient for this purpose.
+     * </p>
+     * <p>
+     * Note: All discovered blocks are stored in {@link RayTraceToPlayerEngine#blockBoxes} as a side effect.
+     * </p>
+     *
+     * @param start the starting point of the path
+     * @param end   the endpoint of the path
+     */
     public void loadBoxes(Vec3i start, Vec3i end) {
 
         var level = controller.level;

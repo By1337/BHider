@@ -7,9 +7,11 @@ import dev.by1337.hider.engine.RayTraceToPlayerEngine;
 import dev.by1337.hider.mutator.SetEquipmentPacketMutator;
 import dev.by1337.hider.network.packet.*;
 import dev.by1337.hider.util.BoolWatcher;
+import dev.by1337.hider.util.CashedSupplier;
 import io.netty.channel.Channel;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
@@ -22,7 +24,6 @@ import org.slf4j.Logger;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 
 public class ViewingPlayer implements ViewingEntity {
     private final PlayerController clientController;
@@ -41,6 +42,7 @@ public class ViewingPlayer implements ViewingEntity {
     private final Config config;
     public final Channel channel;
     private final double fieldOfView;
+    private final CashedSupplier<Boolean> isVisible;
 
     public ViewingPlayer(PlayerController clientController, AddPlayerPacket packet) {
         this.clientController = clientController;
@@ -53,6 +55,14 @@ public class ViewingPlayer implements ViewingEntity {
         config = clientController.config;
         fieldOfView = config.armorHide.fieldOfView;
         rayTraceEngine = new RayTraceToPlayerEngine(clientController, this);
+        isVisible = new CashedSupplier<>(() -> {
+            var clientEye = client.getBukkitEntity().getEyeLocation();
+            Vector directionToTarget = player.getBukkitEntity().getLocation().add(0, -0.5, 0)
+                    .toVector().subtract(clientEye.toVector()).normalize();
+            if (directionToTarget.angle(clientEye.getDirection()) >= fieldOfView) return false;
+
+            return rayTraceEngine.noneMatch();
+        });
     }
 
     @Override
@@ -77,8 +87,9 @@ public class ViewingPlayer implements ViewingEntity {
 
     @Override
     public void tick(long tick) {
-        //hideArmorTick();
         visibleTick();
+        hideArmorTick();
+        isVisible.invalidate();
     }
 
     @Override
@@ -92,8 +103,7 @@ public class ViewingPlayer implements ViewingEntity {
     }
 
     private void visibleTick() {
-
-        fullHide.set(player.isSneaking() && !isVisible());
+        fullHide.set(!isGlowing() && (isHideNickName() || isInvisible()) && !isVisible.get());
 
         if (fullHide.isDirty()) {
             if (fullHide.get()) {
@@ -118,23 +128,38 @@ public class ViewingPlayer implements ViewingEntity {
                         entityId,
                         (byte) ((int) (player.yaw * 256.0F / 360.0F))
                 ));
-                sendActualEquip(); // todo hide armor check
+                if (!equipment.isEmpty() && isVisible.get()) {
+                    sendActualEquip();
+                }
             }
             fullHide.setDirty(false);
         }
     }
 
+    private boolean isInvisible() {
+        return (player.isInvisible() || player.hasEffect(MobEffects.INVISIBILITY));
+    }
+
+    private boolean isHideNickName() {
+        return player.isSneaking() || player.isSpectator();
+    }
+
+    private boolean isGlowing() {
+        return player.isGlowing() || player.hasEffect(MobEffects.GLOWING);
+    }
+
     private void hideArmorTick() {
-        if (equipment.isEmpty()) return;
-        if (config.armorHide.disableWorlds.contains(((ServerLevel) client.world).worldDataServer.getName())) return;
-        long l = System.nanoTime();
-        hideArmor.set(!isVisible());
-        long l1 = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - l);
-        if (l1 > 10) {
-            logger.error("isVisible Time {}", l1);
-        } else if (l1 > 0) {
-            logger.warn("isVisible Time {}", l1);
+        if (equipment.isEmpty() || suppressUpdate) return;
+        if (config.armorHide.disableWorlds.contains(((ServerLevel) client.world).worldDataServer.getName())) {
+            if (hideArmor.get()) {
+                hideArmor.set(false);
+                hideArmor.setDirty(false);
+                unhideArmor();
+            }
+            return;
         }
+
+        hideArmor.set(!isVisible.get());
 
         if (hideArmor.isDirty()) {
             if (hideArmor.get()) {
@@ -147,18 +172,8 @@ public class ViewingPlayer implements ViewingEntity {
     }
 
 
-    public boolean isVisible() {
-        var clientEye = client.getBukkitEntity().getEyeLocation();
-        Vector directionToTarget = player.getBukkitEntity().getLocation().add(0, -0.5, 0)
-                .toVector().subtract(clientEye.toVector()).normalize();
-        if (directionToTarget.angle(clientEye.getDirection()) >= fieldOfView) return false;
-
-        return rayTraceEngine.noneMatch();
-    }
-
     private void onMove(MoveEntityPacket packet) {
     }
-
 
     private void setEntityDataPacket(SetEntityDataPacket packet) {
         //  isShift = me.isSneaking();
