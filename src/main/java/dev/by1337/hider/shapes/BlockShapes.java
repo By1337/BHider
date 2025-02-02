@@ -13,77 +13,68 @@ import org.bukkit.Material;
 import org.by1337.blib.geom.Vec3d;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.EnumSet;
-import java.util.List;
+import java.util.*;
 
 public class BlockShapes {
-    private  final EnumSet<Material> skipTypes;
-    private  final BlockBox[] boxes;
+    private final EnumSet<Material> skipTypes;
+    private final List<BlockBox> blockBoxes = new ArrayList<>();
+    private final byte[] blockIdToBlockBox;
 
     public BlockShapes(List<Material> ignoreTypes) {
         skipTypes = EnumSet.noneOf(Material.class);
         skipTypes.addAll(ignoreTypes);
 
+        blockBoxes.add(BlockBox.EMPTY);
 
-        boxes = new BlockBox[Block.REGISTRY_ID.size()];
+
+        blockIdToBlockBox = new byte[Block.REGISTRY_ID.size()];
+
+        Map<List<AABB>, Integer> rawBoxToId = new HashMap<>();
 
         for (BlockState state : Block.REGISTRY_ID) {
+
             if (skipTypes.contains(state.getBukkitMaterial())) {
-                boxes[Block.REGISTRY_ID.getId(state)] = BlockBox.EMPTY;
+                blockIdToBlockBox[Block.REGISTRY_ID.getId(state)] = 0;
                 continue;
             }
 
-            VoxelShape sp = state.getCollisionShape(new BlockGetter() {
-                @Override
-                public @Nullable BlockEntity getTileEntity(BlockPos blockPos) {
-                    return null;
-                }
-
-                @Override
-                public BlockState getType(BlockPos blockPos) {
-                    return Blocks.AIR.getBlockData();
-                }
-
-                @Override
-                public BlockState getTypeIfLoaded(BlockPos blockPos) {
-                    return Blocks.AIR.getBlockData();
-                }
-
-                @Override
-                public FluidState getFluidIfLoaded(BlockPos blockPos) {
-                    return Blocks.AIR.getBlockData().getFluid();
-                }
-
-                @Override
-                public FluidState getFluid(BlockPos blockPos) {
-                    return Blocks.AIR.getBlockData().getFluid();
-                }
-            }, new BlockPos(0, 0, 0));
+            VoxelShape sp = state.getCollisionShape(FakeBlockGetter.INSTANCE, new BlockPos(0, 0, 0));
 
             if (sp.isEmpty()) {
-                boxes[Block.REGISTRY_ID.getId(state)] = BlockBox.EMPTY;
+                blockIdToBlockBox[Block.REGISTRY_ID.getId(state)] = 0;
             } else {
-                var aabbs = sp.toAabbs();
-                if (aabbs.size() == 1) {
-                    boxes[Block.REGISTRY_ID.getId(state)] = fromAABB(aabbs.get(0));
-                } else if (aabbs.size() > 1) {
-                    List<DefaultBlockBox> boxes = new ArrayList<>();
-                    aabbs.forEach(aabb -> boxes.add(fromAABB(aabb)));
-                    this.boxes[Block.REGISTRY_ID.getId(state)] = new ListBlockBox(boxes);
+                List<AABB> aabbs = sp.toAabbs();
+                Integer id = rawBoxToId.get(aabbs);
+                if (id != null) {
+                    blockIdToBlockBox[Block.REGISTRY_ID.getId(state)] = id.byteValue();
                 } else {
-                    boxes[Block.REGISTRY_ID.getId(state)] = BlockBox.EMPTY;
+                    BlockBox box;
+                    if (aabbs.size() == 1) {
+                        box = fromAABB(aabbs.get(0));
+                    } else {
+                        List<DefaultBlockBox> boxes = new ArrayList<>();
+                        aabbs.forEach(aabb -> boxes.add(fromAABB(aabb)));
+                        box = new ListBlockBox(boxes);
+                    }
+                    int pos = blockBoxes.size();
+                    blockBoxes.add(box);
+                    rawBoxToId.put(aabbs, pos);
+                    blockIdToBlockBox[Block.REGISTRY_ID.getId(state)] = (byte) pos;
+
+                    if (pos > 255) {
+                        throw new IllegalStateException("Достигнут лимит в 256 блоков!");
+                    }
                 }
             }
         }
+        System.out.println("Занято " + blockBoxes.size() + " из 256");
+    }
+    public byte toBlockBox(int block){
+        return blockIdToBlockBox[block];
     }
 
-    public  BlockBox getBox(BlockState state) {
-        return boxes[Block.REGISTRY_ID.getId(state)];
-    }
-
-    public  BlockBox getBox(int x) {
-        return x < 0 || x >= boxes.length ? BlockBox.EMPTY : boxes[x];
+    public BlockBox getBlockBox(byte box){
+        return blockBoxes.get(box & 0xFF);
     }
 
     private static DefaultBlockBox fromAABB(AABB aabb) {
@@ -91,5 +82,34 @@ public class BlockShapes {
                 new Vec3d(aabb.minX, aabb.minY, aabb.minZ),
                 new Vec3d(aabb.maxX, aabb.maxY, aabb.maxZ)
         );
+    }
+
+    private static class FakeBlockGetter implements BlockGetter {
+        private static final FakeBlockGetter INSTANCE = new FakeBlockGetter();
+
+        @Override
+        public @Nullable BlockEntity getTileEntity(BlockPos pos) {
+            return null;
+        }
+
+        @Override
+        public BlockState getType(BlockPos pos) {
+            return Blocks.AIR.getBlockData();
+        }
+
+        @Override
+        public BlockState getTypeIfLoaded(BlockPos pos) {
+            return Blocks.AIR.getBlockData();
+        }
+
+        @Override
+        public FluidState getFluidIfLoaded(BlockPos pos) {
+            return Blocks.AIR.getBlockData().getFluid();
+        }
+
+        @Override
+        public FluidState getFluid(BlockPos pos) {
+            return Blocks.AIR.getBlockData().getFluid();
+        }
     }
 }

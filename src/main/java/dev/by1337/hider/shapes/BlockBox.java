@@ -13,22 +13,14 @@ public interface BlockBox {
         }
 
         @Override
-        @Contract("_, _ -> false")
-        public boolean rayIntersects(Vec3d rayOrigin, Vec3d rayDirection) {
+        @Contract("_, _, _,_,_ -> false")
+        public boolean rayIntersects(Vec3d rayOrigin, Vec3d rayDirection, int x, int y, int z) {
             return false;
         }
 
-        @Override
-        @Contract("_, _, _ -> this")
-        public BlockBox offset(int x, int y, int z) {
-            return EMPTY;
-        }
     };
 
     boolean intersect(BlockBox aabb);
 
-    boolean rayIntersects(Vec3d rayOrigin, Vec3d rayDirection);
-
-    @Contract(value = "_, _, _ -> new", pure = true)
-    BlockBox offset(int x, int y, int z);
+    boolean rayIntersects(Vec3d rayOrigin, Vec3d rayDirection, int x, int y, int z);
 }

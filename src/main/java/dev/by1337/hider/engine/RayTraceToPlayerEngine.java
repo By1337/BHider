@@ -13,6 +13,8 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 
 public class RayTraceToPlayerEngine {
+    private static final int[] BLOCK_BOX = new int[2048 * 4];
+    private static int BLOCK_BOX_INDEX;
     private static final RayDirectionCreator[] RAY_DIRECTIONS;
     private final PlayerController controller;
     private final ViewingEntity viewingEntity;
@@ -21,7 +23,7 @@ public class RayTraceToPlayerEngine {
     private @Nullable Vec3d lastPlayerPos;
     private boolean lastState;
     private final AutoReadWriteLock lock = new AutoReadWriteLock();
-    private final ArrayList<BlockBox> blockBoxes = new ArrayList<>();
+
 
     private @Nullable RayDirectionCreator lastDirection;
 
@@ -42,9 +44,9 @@ public class RayTraceToPlayerEngine {
         Vec3d clientPos = new Vec3d(client.lastX, client.getHeadY(), client.lastZ);
         Vec3d playerPos = new Vec3d(viewingEntity.getBukkitEntity().getLocation());
 
-        if (clientPos.equals(lastClientPos) && playerPos.equals(lastPlayerPos)) {
-            return lastState;
-        }
+     //  if (clientPos.equals(lastClientPos) && playerPos.equals(lastPlayerPos)) {
+     //      return lastState;
+     //  }
         lastClientPos = clientPos;
         lastPlayerPos = playerPos;
 
@@ -54,15 +56,15 @@ public class RayTraceToPlayerEngine {
         var aabb = viewingEntity.getAABB().expand(extraSize.x, extraSize.y, extraSize.z);
         Vec3d playerCenter = new Vec3d(aabb.maxX + aabb.minX, aabb.maxY + aabb.minY, aabb.maxZ + aabb.minZ).divide(2);
 
-        blockBoxes.clear();
+        BLOCK_BOX_INDEX = 0;
 
         loadBoxes(clientEye.toBlockPos(), playerCenter.toBlockPos());
 
-        if (lastDirection != null) {
-            if (!rayIntersects(clientPos, lastDirection.create(this, aabb, clientEye, playerCenter))) {
-                return true;
-            }
-        }
+       // if (lastDirection != null) {
+       //     if (!rayIntersects(clientPos, lastDirection.create(this, aabb, clientEye, playerCenter))) {
+       //         return true;
+       //     }
+       // }
         for (RayDirectionCreator rayDirection : RAY_DIRECTIONS) {
             if (rayDirection == lastDirection) continue;
             if (!rayIntersects(clientPos, rayDirection.create(this, aabb, clientEye, playerCenter))) {
@@ -74,31 +76,23 @@ public class RayTraceToPlayerEngine {
     }
 
     private boolean rayIntersects(Vec3d clientPos, Vec3d rayDirection) {
-        for (BlockBox box : blockBoxes) {
-            if (box.rayIntersects(clientPos, rayDirection)) {
+        for (int i = 0; i < BLOCK_BOX_INDEX;) {
+            int x = BLOCK_BOX[i++];
+            int y = BLOCK_BOX[i++];
+            int z = BLOCK_BOX[i++];
+            byte blockBox = (byte) BLOCK_BOX[i++];
+            BlockBox box = controller.level.blockShapes.getBlockBox(blockBox);
+
+            if (box.rayIntersects(clientPos, rayDirection, x, y, z)) {
                 return true;
             }
         }
         return false;
     }
 
-    /**
-     * Collects all blocks along a path from the starting point to the endpoint, including surrounding blocks.
-     * <p>
-     * This method is designed to achieve up to 74% uniqueness in the worst-case scenario, making it highly efficient
-     * for use cases where it is invoked every tick for each player. Due to performance concerns, a {@link HashSet}
-     * is not used, as it is less efficient for this purpose.
-     * </p>
-     * <p>
-     * Note: All discovered blocks are stored in {@link RayTraceToPlayerEngine#blockBoxes} as a side effect.
-     * </p>
-     *
-     * @param start the starting point of the path
-     * @param end   the endpoint of the path
-     */
     public void loadBoxes(Vec3i start, Vec3i end) {
 
-        var level = controller.level;
+       //var level = controller.level;
         int x0 = start.x, y0 = start.y, z0 = start.z;
         int x1 = end.x, y1 = end.y, z1 = end.z;
 
@@ -119,19 +113,46 @@ public class RayTraceToPlayerEngine {
 
         GotoType lastStep = null;
         while (true) {
-            blockBoxes.add(level.getBlockBox(x, y, z));
-
+            add(x, y, z);
             if (x == x1 && y == y1 && z == z1) break;
 
             if (tMaxX < tMaxY) {
                 if (tMaxX < tMaxZ) {
-                    add(GotoType.X, lastStep, x, y, z);
+                    if (lastStep != GotoType.Z) {
+                        add(x, y, z + 1);
+                        add(x, y, z - 1);
+                    }
+                    if (lastStep != GotoType.Y) {
+                        add(x, y + 1, z);
+                        add(x, y - 1, z);
+
+                        add(x, y + 1, z + 1);
+                        add(x, y - 1, z + 1);
+
+                        add(x, y + 1, z - 1);
+                        add(x, y - 1, z - 1);
+                    }
                     lastStep = GotoType.X;
 
                     tMaxX += tDeltaX;
                     x += sx;
                 } else {
-                    add(GotoType.Z, lastStep, x, y, z);
+                    if (lastStep != GotoType.X) {
+                        add(x + 1, y, z);
+                        add(x - 1, y, z);
+
+                        if (lastStep != GotoType.Y) {
+                            add(x + 1, y + 1, z);
+                            add(x + 1, y - 1, z);
+
+                            add(x - 1, y + 1, z);
+                            add(x - 1, y - 1, z);
+                        }
+                    }
+                    if (lastStep != GotoType.Y) {
+                        add(x, y + 1, z);
+                        add(x, y - 1, z);
+                    }
                     lastStep = GotoType.Z;
 
                     tMaxZ += tDeltaZ;
@@ -139,13 +160,35 @@ public class RayTraceToPlayerEngine {
                 }
             } else {
                 if (tMaxY < tMaxZ) {
-                    add(GotoType.Y, lastStep, x, y, z);
+                    if (lastStep != GotoType.X) {
+                        add(x + 1, y, z);
+                        add(x - 1, y, z);
+                    }
+                    if (lastStep != GotoType.Z) {
+                        add(x, y, z + 1);
+                        add(x, y, z - 1);
+                    }
                     lastStep = GotoType.Y;
 
                     tMaxY += tDeltaY;
                     y += sy;
                 } else {
-                    add(GotoType.Z, lastStep, x, y, z);
+                    if (lastStep != GotoType.X) {
+                        add(x + 1, y, z);
+                        add(x - 1, y, z);
+
+                        if (lastStep != GotoType.Y) {
+                            add(x + 1, y + 1, z);
+                            add(x + 1, y - 1, z);
+
+                            add(x - 1, y + 1, z);
+                            add(x - 1, y - 1, z);
+                        }
+                    }
+                    if (lastStep != GotoType.Y) {
+                        add(x, y + 1, z);
+                        add(x, y - 1, z);
+                    }
                     lastStep = GotoType.Z;
 
                     tMaxZ += tDeltaZ;
@@ -154,61 +197,67 @@ public class RayTraceToPlayerEngine {
             }
         }
     }
+    private void add(int x, int y, int z){
+        BLOCK_BOX[BLOCK_BOX_INDEX++] = x;
+        BLOCK_BOX[BLOCK_BOX_INDEX++] = y;
+        BLOCK_BOX[BLOCK_BOX_INDEX++] = z;
+        BLOCK_BOX[BLOCK_BOX_INDEX++] = controller.level.getBlockBoxId(x, y, z) & 0xFF;
+    }
 
     public enum GotoType {
         X, Y, Z
     }
 
-    public void add(GotoType nextStep, GotoType currentStep, int x, int y, int z) {
+    /*public void add(GotoType nextStep, GotoType currentStep, int x, int y, int z) {
         var level = controller.level;
-        blockBoxes.add(level.getBlockBox(x, y, z));
+        //BLOCK_BOX[BLOCK_BOX_INDEX++] = level.getBlockBox(x, y, z);
 
         if (nextStep == GotoType.Y) {
             if (currentStep != GotoType.X) {
-                blockBoxes.add(level.getBlockBox(x + 1, y, z));
-                blockBoxes.add(level.getBlockBox(x - 1, y, z));
+                BLOCK_BOX[BLOCK_BOX_INDEX++] = level.getBlockBox(x + 1, y, z);
+                BLOCK_BOX[BLOCK_BOX_INDEX++] = level.getBlockBox(x - 1, y, z);
             }
             if (currentStep != GotoType.Z) {
-                blockBoxes.add(level.getBlockBox(x, y, z + 1));
-                blockBoxes.add(level.getBlockBox(x, y, z - 1));
+                BLOCK_BOX[BLOCK_BOX_INDEX++] = level.getBlockBox(x, y, z + 1);
+                BLOCK_BOX[BLOCK_BOX_INDEX++] = level.getBlockBox(x, y, z - 1);
             }
         }
 
         if (nextStep == GotoType.Z) {
             if (currentStep != GotoType.X) {
-                blockBoxes.add(level.getBlockBox(x + 1, y, z));
-                blockBoxes.add(level.getBlockBox(x - 1, y, z));
+                BLOCK_BOX[BLOCK_BOX_INDEX++] = level.getBlockBox(x + 1, y, z);
+                BLOCK_BOX[BLOCK_BOX_INDEX++] = level.getBlockBox(x - 1, y, z);
 
                 if (currentStep != GotoType.Y) {
-                    blockBoxes.add(level.getBlockBox(x + 1, y + 1, z));
-                    blockBoxes.add(level.getBlockBox(x + 1, y - 1, z));
+                    BLOCK_BOX[BLOCK_BOX_INDEX++] = level.getBlockBox(x + 1, y + 1, z);
+                    BLOCK_BOX[BLOCK_BOX_INDEX++] = level.getBlockBox(x + 1, y - 1, z);
 
-                    blockBoxes.add(level.getBlockBox(x - 1, y + 1, z));
-                    blockBoxes.add(level.getBlockBox(x - 1, y - 1, z));
+                    BLOCK_BOX[BLOCK_BOX_INDEX++] = level.getBlockBox(x - 1, y + 1, z);
+                    BLOCK_BOX[BLOCK_BOX_INDEX++] = level.getBlockBox(x - 1, y - 1, z);
                 }
             }
             if (currentStep != GotoType.Y) {
-                blockBoxes.add(level.getBlockBox(x, y + 1, z));
-                blockBoxes.add(level.getBlockBox(x, y - 1, z));
+                BLOCK_BOX[BLOCK_BOX_INDEX++] = level.getBlockBox(x, y + 1, z);
+                BLOCK_BOX[BLOCK_BOX_INDEX++] = level.getBlockBox(x, y - 1, z);
             }
         }
         if (nextStep == GotoType.X) {
             if (currentStep != GotoType.Z) {
-                blockBoxes.add(level.getBlockBox(x, y, z + 1));
-                blockBoxes.add(level.getBlockBox(x, y, z - 1));
+                BLOCK_BOX[BLOCK_BOX_INDEX++] = level.getBlockBox(x, y, z + 1);
+                BLOCK_BOX[BLOCK_BOX_INDEX++] = level.getBlockBox(x, y, z - 1);
             }
             if (currentStep != GotoType.Y) {
-                blockBoxes.add(level.getBlockBox(x, y + 1, z));
-                blockBoxes.add(level.getBlockBox(x, y - 1, z));
+                BLOCK_BOX[BLOCK_BOX_INDEX++] = level.getBlockBox(x, y + 1, z);
+                BLOCK_BOX[BLOCK_BOX_INDEX++] = level.getBlockBox(x, y - 1, z);
 
-                blockBoxes.add(level.getBlockBox(x, y + 1, z + 1));
-                blockBoxes.add(level.getBlockBox(x, y - 1, z + 1));
+                BLOCK_BOX[BLOCK_BOX_INDEX++] = level.getBlockBox(x, y + 1, z + 1);
+                BLOCK_BOX[BLOCK_BOX_INDEX++] = level.getBlockBox(x, y - 1, z + 1);
 
-                blockBoxes.add(level.getBlockBox(x, y + 1, z - 1));
-                blockBoxes.add(level.getBlockBox(x, y - 1, z - 1));
+                BLOCK_BOX[BLOCK_BOX_INDEX++] = level.getBlockBox(x, y + 1, z - 1);
+                BLOCK_BOX[BLOCK_BOX_INDEX++] = level.getBlockBox(x, y - 1, z - 1);
             }
         }
-    }
+    }*/
 
     static {
         RAY_DIRECTIONS = new RayDirectionCreator[]{

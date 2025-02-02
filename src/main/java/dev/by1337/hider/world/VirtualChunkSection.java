@@ -1,16 +1,16 @@
 package dev.by1337.hider.world;
 
+import dev.by1337.hider.shapes.BlockShapes;
 import io.netty.handler.codec.DecoderException;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.util.BitStorage;
-import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
 
 public class VirtualChunkSection {
     public static final int BLOCK_COUNT = 16 * 16 * 16;
-    private final VirtualBlock[] blockStates = new VirtualBlock[BLOCK_COUNT];
+    private final byte[] blockStates = new byte[BLOCK_COUNT];
 
-    public void read(FriendlyByteBuf buffer) {
+    public void read(FriendlyByteBuf buffer, BlockShapes shapes) {
         short nonEmptyBlockCount = buffer.readShort();
         byte bits = buffer.readByte();
 
@@ -34,27 +34,27 @@ public class VirtualChunkSection {
         for (int index = 0; index < BLOCK_COUNT; index++) {
             int paletteIndex = storage.get(index);
             int state = palette == null ? 0 : palette[paletteIndex];
-            blockStates[index] = new VirtualBlock(state);
+            blockStates[index] = shapes.toBlockBox(state);
         }
     }
+
 
     private static int index(int x, int y, int z) {
         return (y << 8) | (z << 4) | x;
     }
 
-    @Nullable
-    public VirtualBlock getBlockState(int x, int y, int z) {
+    public byte getBlockState(int x, int y, int z) {
         if (x < 0 || x >= 16 || y < 0 || y >= 16 || z < 0 || z >= 16) {
-            return null;
+            return 0;
         }
         return blockStates[index(x, y, z)];
     }
 
-    public void setBlockState(int x, int y, int z, int state) {
+    public void setBlockState(int x, int y, int z, byte state) {
         if (x < 0 || x >= 16 || y < 0 || y >= 16 || z < 0 || z >= 16) {
             throw new IllegalArgumentException("Coordinates out of bounds: " + x + ", " + y + ", " + z);
         }
-        blockStates[index(x, y, z)] = new VirtualBlock(state);
+        blockStates[index(x, y, z)] = state;
     }
 
     public long[] readLongArray(long @Nullable [] var1, FriendlyByteBuf buf) {

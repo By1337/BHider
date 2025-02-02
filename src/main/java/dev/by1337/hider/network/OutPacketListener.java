@@ -43,4 +43,8 @@ public class OutPacketListener extends MessageToByteEncoder<ByteBuf> implements 
         super.handlerRemoved(ctx);
         close();
     }
+
+    public PlayerController playerController() {
+        return playerController;
+    }
 }

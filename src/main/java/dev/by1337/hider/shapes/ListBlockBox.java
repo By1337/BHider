@@ -5,6 +5,7 @@ import org.jetbrains.annotations.Contract;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class ListBlockBox implements BlockBox {
@@ -23,16 +24,24 @@ public class ListBlockBox implements BlockBox {
     }
 
     @Override
-    public boolean rayIntersects(Vec3d rayOrigin, Vec3d rayDirection) {
+    public boolean rayIntersects(Vec3d rayOrigin, Vec3d rayDirection, int x, int y, int z) {
         for (DefaultBlockBox box : list) {
-            if (box.rayIntersects(rayOrigin, rayDirection)) return true;
+            if (box.rayIntersects(rayOrigin, rayDirection, x, y, z)) return true;
         }
         return false;
     }
 
+
     @Override
-    @Contract(value = "_, _, _ -> new", pure = true)
-    public BlockBox offset(int x, int y, int z) {
-        return new ListBlockBox(list.stream().map(box -> (DefaultBlockBox) box.offset(x, y, z)).collect(Collectors.toCollection(ArrayList::new)));
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ListBlockBox that = (ListBlockBox) o;
+        return Objects.equals(list, that.list);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(list);
     }
 }

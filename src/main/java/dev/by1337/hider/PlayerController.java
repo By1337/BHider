@@ -73,7 +73,7 @@ public class PlayerController implements Closeable {
                     !(packet instanceof ClientboundLightUpdatePacket) &&
                             !(packet instanceof ClientboundSetTimePacket)
                             && packet != null)
-                logger.info(packet.getClass().getName());
+                //   logger.info(packet.getClass().getName());
 
                 in0.resetReaderIndex();
             out0.writeBytes(in0);
@@ -86,24 +86,24 @@ public class PlayerController implements Closeable {
             ViewingPlayer playerData = new ViewingPlayer(this, addPlayerPacket);
             System.out.println(playerData);
             viewingEntities.put(playerData.entityId, playerData);
-        }  else if (packet instanceof LevelChunkPacket packet1) {
+        } else if (packet instanceof LevelChunkPacket packet1) {
             packet1.write(out); // todo хз пакет ломается если его сначала прочитать
             packet1.setCanceled(true); // отменяем чтобы повторно не записать пакет в байт буфер
             level.readChunk(packet1);
         } else if (packet instanceof ForgetLevelChunkPacket packet1) {
             level.unloadChunk(packet1.x(), packet1.y());
         } else if (packet instanceof SectionBlocksUpdatePacket packet1) {
-            packet1.runUpdates((pos, block) -> level.setBlock(pos.getX(), pos.getY(), pos.getZ(), block));
+            packet1.runUpdates((pos, block) -> level.setBlockState(pos.getX(), pos.getY(), pos.getZ(), block));
         } else if (packet instanceof BlockUpdatePacket packet1) {
             var pos = packet1.getPos();
-            level.setBlock(pos.getX(), pos.getY(), pos.getZ(), packet1.getBlock());
+            level.setBlockState(pos.getX(), pos.getY(), pos.getZ(), packet1.getBlock());
         } else if (packet instanceof ExplodePacket packet1) {
-            packet1.toBlow().forEach(pos -> level.setBlock(pos.getX(), pos.getY(), pos.getZ(), 0));
+            packet1.toBlow().forEach(pos -> level.setBlockState(pos.getX(), pos.getY(), pos.getZ(), 0));
         } else if (packet instanceof RemoveEntitiesPacket packet1) {
             for (int entityId : packet1.getEntityIds()) {
                 viewingEntities.remove(entityId);
             }
-        }else {
+        } else {
             int entity = packet.getEntity();
             ViewingEntity viewingEntity = viewingEntities.get(entity);
             if (viewingEntity != null) {

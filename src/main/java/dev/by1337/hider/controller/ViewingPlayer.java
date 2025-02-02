@@ -56,10 +56,10 @@ public class ViewingPlayer implements ViewingEntity {
         fieldOfView = config.armorHide.fieldOfView;
         rayTraceEngine = new RayTraceToPlayerEngine(clientController, this);
         isVisible = new CashedSupplier<>(() -> {
-            var clientEye = client.getBukkitEntity().getEyeLocation();
-            Vector directionToTarget = player.getBukkitEntity().getLocation().add(0, -0.5, 0)
+/*            var clientEye = client.getBukkitEntity().getEyeLocation();
+            Vector directionToTarget = player.getBukkitEntity().getLocation().add(0, -0.5, 0) //todo
                     .toVector().subtract(clientEye.toVector()).normalize();
-            if (directionToTarget.angle(clientEye.getDirection()) >= fieldOfView) return false;
+            if (directionToTarget.angle(clientEye.getDirection()) >= fieldOfView) return false;*/
 
             return rayTraceEngine.noneMatch();
         });
@@ -131,6 +131,7 @@ public class ViewingPlayer implements ViewingEntity {
                 if (!equipment.isEmpty() && isVisible.get()) {
                     sendActualEquip();
                 }
+                channel.flush();
             }
             fullHide.setDirty(false);
         }
