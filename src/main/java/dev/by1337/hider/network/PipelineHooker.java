@@ -1,10 +1,13 @@
 package dev.by1337.hider.network;
 
+import com.destroystokyo.paper.event.player.PlayerInitialSpawnEvent;
 import dev.by1337.hider.config.Config;
 import dev.by1337.hider.shapes.BlockShapes;
 import dev.by1337.hider.ticker.Ticker;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelOutboundHandlerAdapter;
+import net.minecraft.server.dedicated.DedicatedServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import org.bukkit.Bukkit;
 import org.bukkit.craftbukkit.entity.CraftPlayer;
@@ -14,6 +17,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.Plugin;
 
@@ -36,7 +40,7 @@ public class PipelineHooker implements Listener, Closeable {
     }
 
     private void hook(Player player) {
-        Channel channel = ((CraftPlayer) player).getHandle().playerConnection.networkManager.channel;
+        Channel channel = ((CraftPlayer) player).getHandle().networkManager.channel;
         if (channel.pipeline().get(OutPacketListener.NAME) != null)
             unhook(player);
         // client <- prepender <- compress <- bhider_encoder <- bhider_listener <- via-encoder <- encoder <- generate packet
@@ -67,7 +71,7 @@ public class PipelineHooker implements Listener, Closeable {
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
-    public void onJoin(PlayerJoinEvent event) {
+    public void onJoin(PlayerInitialSpawnEvent event) {
         hook(event.getPlayer());
     }
 

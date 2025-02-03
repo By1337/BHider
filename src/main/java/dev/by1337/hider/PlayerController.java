@@ -85,7 +85,6 @@ public class PlayerController implements Closeable, Runnable {
         long l = System.nanoTime();
         if (packet instanceof AddPlayerPacket addPlayerPacket) {
             ViewingPlayer playerData = new ViewingPlayer(this, addPlayerPacket);
-            //System.out.println(playerData);
             viewingEntities.put(playerData.entityId, playerData);
         } else if (packet instanceof LevelChunkPacket packet1) {
             packet1.write(out); // todo хз пакет ломается если его сначала прочитать
@@ -114,7 +113,7 @@ public class PlayerController implements Closeable, Runnable {
         packet.write(out);
         long time = (System.nanoTime() - l) / 1_000_000;
         if (time < 1) {
-            //   logger.info("Packet {} {} ms.", packet.getClass().getSimpleName(), time);
+             //  logger.info("Packet {} {} ms.", packet.getClass().getSimpleName(), time);
         } else if (time < 10) {
             logger.warn("Packet {} {} ms.", packet.getClass().getSimpleName(), time);
         } else {

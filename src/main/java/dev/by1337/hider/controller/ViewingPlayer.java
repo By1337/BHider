@@ -56,13 +56,17 @@ public class ViewingPlayer implements ViewingEntity {
         fieldOfView = config.armorHide.fieldOfView;
         rayTraceEngine = new RayTraceToPlayerEngine(clientController, this);
         isVisible = new CashedSupplier<>(() -> {
-//            var clientEye = client.getBukkitEntity().getEyeLocation();
-//            Vector directionToTarget = player.getBukkitEntity().getLocation().add(0, -0.5, 0)
-//                    .toVector().subtract(clientEye.toVector()).normalize();
-//            if (directionToTarget.angle(clientEye.getDirection()) >= fieldOfView) return false;
+            var clientEye = client.getBukkitEntity().getEyeLocation();
+            Vector directionToTarget = player.getBukkitEntity().getLocation().add(0, -0.5, 0)
+                    .toVector().subtract(clientEye.toVector()).normalize();
+            if (directionToTarget.angle(clientEye.getDirection()) >= fieldOfView) return false;
 
             return rayTraceEngine.noneMatch();
         });
+
+        fullHide.set(!isGlowing() && (isHideNickName() || isInvisible()) && !isVisible.get());
+        fullHide.setDirty(false);
+        packet.setCanceled(fullHide.get()); // я попытался, пакеты чанков могут прийти позже из-за чего при заходе на сервер некоторые игроки могут некоторое время быть видимыми
     }
 
     @Override
@@ -81,6 +85,8 @@ public class ViewingPlayer implements ViewingEntity {
         } else if (packet instanceof TeleportEntityPacket) {
             if (suppressUpdate) packet.setCanceled(true);
         } else if (packet instanceof AnimatePacket) {
+            if (suppressUpdate) packet.setCanceled(true);
+        }else if (packet instanceof AddPlayerPacket) {
             if (suppressUpdate) packet.setCanceled(true);
         }
     }

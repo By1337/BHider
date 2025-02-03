@@ -3,23 +3,24 @@ package dev.by1337.hider.engine;
 import dev.by1337.hider.PlayerController;
 import dev.by1337.hider.controller.ViewingEntity;
 import dev.by1337.hider.shapes.BlockBox;
-import dev.by1337.hider.world.VirtualWorld;
+import dev.by1337.hider.util.MutableVec3d;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.AABB;
-import org.by1337.blib.geom.Vec3d;
-import org.by1337.blib.geom.Vec3i;
+import org.bukkit.craftbukkit.entity.CraftEntity;
+import org.by1337.blib.geom.NumberUtil;
 import org.by1337.blib.util.lock.AutoReadWriteLock;
 import org.jetbrains.annotations.Nullable;
 
 public class RayTraceToPlayerEngine {
-    private static final int[] BLOCK_BOX = new int[2048 * 4];
+    private static final int[] BLOCK_BOX = new int[2048 * 4]; // рассчитано что будет всего один поток поэтому это static
     private static int BLOCK_BOX_INDEX;
-    private static final RayDirectionCreator[] RAY_DIRECTIONS;
+    private static final Vec3dCreator[] RAY_DIRECTIONS;
     private final PlayerController controller;
     private final ViewingEntity viewingEntity;
 
-    private @Nullable Vec3d lastClientPos;
-    private @Nullable Vec3d lastPlayerPos;
+    private final MutableVec3d lastClientPos = new MutableVec3d();
+    private final MutableVec3d lastPlayerPos = new MutableVec3d();
     private boolean lastState;
     private final AutoReadWriteLock lock = new AutoReadWriteLock();
 
@@ -38,35 +39,59 @@ public class RayTraceToPlayerEngine {
         }
     }
 
+    private final MutableVec3d clientEye = new MutableVec3d();
+    private final MutableVec3d playerCenter = new MutableVec3d();
+
     private boolean noneMatch0() {
         ServerPlayer client = controller.client;
-        Vec3d clientPos = new Vec3d(client.lastX, client.getHeadY(), client.lastZ);
-        Vec3d playerPos = new Vec3d(viewingEntity.getBukkitEntity().getLocation());
+        double clientPosX = client.lastX;
+        double clientPosY = client.getHeadY();
+        double clientPosZ = client.lastZ;
 
-//        if (clientPos.equals(lastClientPos) && playerPos.equals(lastPlayerPos)) {
+        Entity entity = ((CraftEntity) viewingEntity.getBukkitEntity()).getHandle();
+        double playerPosX = entity.lastX;
+        double playerPosY = entity.lastY;
+        double playerPosZ = entity.lastZ;
+
+
+//        if (lastClientPos.equals(clientPosX, clientPosY, clientPosZ) && lastPlayerPos.equals(playerPosX, playerPosY, playerPosZ)) {
 //            return lastState;
 //        }
-        lastClientPos = clientPos;
-        lastPlayerPos = playerPos;
+        lastClientPos.x = clientPosX;
+        lastClientPos.y = clientPosY;
+        lastClientPos.z = clientPosZ;
 
-        Vec3d clientEye = new Vec3d(client.lastX, client.getHeadY(), client.lastZ);
+        lastPlayerPos.x = playerPosX;
+        lastPlayerPos.y = playerPosY;
+        lastPlayerPos.z = playerPosZ;
+
+        clientEye.set(client.lastX, client.getHeadY(), client.lastZ);
 
         var extraSize = controller.config.armorHide.expandAabb;
         var aabb = viewingEntity.getAABB().expand(extraSize.x, extraSize.y, extraSize.z);
-        Vec3d playerCenter = new Vec3d(aabb.maxX + aabb.minX, aabb.maxY + aabb.minY, aabb.maxZ + aabb.minZ).divide(2);
+        playerCenter.set(aabb.maxX + aabb.minX, aabb.maxY + aabb.minY, aabb.maxZ + aabb.minZ).div(2);
 
         BLOCK_BOX_INDEX = 0;
 
-        loadBoxes(clientEye.toBlockPos(), playerCenter.toBlockPos());
+
+        loadBoxes(
+                NumberUtil.floor(clientEye.x),
+                NumberUtil.floor(clientEye.y),
+                NumberUtil.floor(clientEye.z),
+
+                NumberUtil.floor(playerCenter.x),
+                NumberUtil.floor(playerCenter.y),
+                NumberUtil.floor(playerCenter.z)
+        );
 
 //        if (lastDirection != null) {
 //            if (!rayIntersects(clientPos, lastDirection.create(this, aabb, clientEye, playerCenter))) {
 //                return true;
 //            }
 //        }
-        for (RayDirectionCreator rayDirection : RAY_DIRECTIONS) {
+        for (Vec3dCreator rayDirection : RAY_DIRECTIONS) {
             if (rayDirection == lastDirection) continue;
-            if (!rayIntersects(clientPos, rayDirection.create(this, aabb, clientEye, playerCenter))) {
+            if (!rayIntersects(lastClientPos, rayDirection.create(this, aabb, clientEye, playerCenter))) {
                 lastDirection = rayDirection;
                 return true;
             }
@@ -74,7 +99,7 @@ public class RayTraceToPlayerEngine {
         return false;
     }
 
-    private boolean rayIntersects(Vec3d clientPos, Vec3d rayDirection) {
+    private boolean rayIntersects(MutableVec3d clientPos, MutableVec3d rayDirection) {
         for (int i = 0; i < BLOCK_BOX_INDEX; ) {
             int x = BLOCK_BOX[i++];
             int y = BLOCK_BOX[i++];
@@ -89,15 +114,12 @@ public class RayTraceToPlayerEngine {
         return false;
     }
 
-    private void loadBoxes(Vec3i start, Vec3i end) {
+    private void loadBoxes(int startX, int startY, int startZ, int endX, int endY, int endZ) {
 
-        int x0 = start.x, y0 = start.y, z0 = start.z;
-        int x1 = end.x, y1 = end.y, z1 = end.z;
-
-        int dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0), dz = Math.abs(z1 - z0);
-        int sx = x0 < x1 ? 1 : -1;
-        int sy = y0 < y1 ? 1 : -1;
-        int sz = z0 < z1 ? 1 : -1;
+        int dx = Math.abs(endX - startX), dy = Math.abs(endY - startY), dz = Math.abs(endZ - startZ);
+        int sx = startX < endX ? 1 : -1;
+        int sy = startY < endY ? 1 : -1;
+        int sz = startZ < endZ ? 1 : -1;
 
         double tMaxX = dx == 0 ? Double.MAX_VALUE : (0.5 / dx);
         double tMaxY = dy == 0 ? Double.MAX_VALUE : (0.5 / dy);
@@ -107,12 +129,12 @@ public class RayTraceToPlayerEngine {
         double tDeltaY = dy == 0 ? Double.MAX_VALUE : (1.0 / dy);
         double tDeltaZ = dz == 0 ? Double.MAX_VALUE : (1.0 / dz);
 
-        int x = x0, y = y0, z = z0;
+        int x = startX, y = startY, z = startZ;
 
         GotoType lastStep = null;
         while (true) {
             add(x, y, z);
-            if (x == x1 && y == y1 && z == z1) break;
+            if (x == endX && y == endY && z == endZ) break;
 
             if (tMaxX < tMaxY) {
                 if (tMaxX < tMaxZ) {
@@ -208,25 +230,124 @@ public class RayTraceToPlayerEngine {
     }
 
     static {
-        RAY_DIRECTIONS = new RayDirectionCreator[]{
-                (engine, aabb, clientEye, ignored) -> new Vec3d(aabb.minX, aabb.minY, aabb.minZ).sub(clientEye).normalize(),
-                (engine, aabb, clientEye, ignored) -> new Vec3d(aabb.minX, aabb.maxY, aabb.minZ).sub(clientEye).normalize(),
-                (engine, aabb, clientEye, ignored) -> new Vec3d(aabb.maxX, aabb.maxY, aabb.minZ).sub(clientEye).normalize(),
-                (engine, aabb, clientEye, ignored) -> new Vec3d(aabb.maxX, aabb.minY, aabb.minZ).sub(clientEye).normalize(),
-                (engine, aabb, clientEye, ignored) -> new Vec3d(aabb.minX, aabb.minY, aabb.maxZ).sub(clientEye).normalize(),
-                (engine, aabb, clientEye, ignored) -> new Vec3d(aabb.minX, aabb.maxY, aabb.maxZ).sub(clientEye).normalize(),
-                (engine, aabb, clientEye, ignored) -> new Vec3d(aabb.maxX, aabb.maxY, aabb.maxZ).sub(clientEye).normalize(),
-                (engine, aabb, clientEye, ignored) -> new Vec3d(aabb.maxX, aabb.minY, aabb.maxZ).sub(clientEye).normalize(),
-                (engine, aabb, clientEye, playerCenter) -> playerCenter.add(0, 0, 0).sub(clientEye).normalize(),
-                (engine, aabb, clientEye, playerCenter) -> playerCenter.add(0.6, 0, 0).sub(clientEye).normalize(),
-                (engine, aabb, clientEye, playerCenter) -> playerCenter.add(-0.6, 0, 0).sub(clientEye).normalize(),
-                (engine, aabb, clientEye, playerCenter) -> playerCenter.add(0, 0, 0.6).sub(clientEye).normalize(),
-                (engine, aabb, clientEye, playerCenter) -> playerCenter.add(0, 0, -0.6).sub(clientEye).normalize()
+        RAY_DIRECTIONS = new Vec3dCreator[]{
+                new Vec3dCreator() {
+                    @Override
+                    public MutableVec3d create(MutableVec3d instance, RayTraceToPlayerEngine engine, AABB aabb, MutableVec3d clientEye, MutableVec3d playerCenter) {
+                        return instance.set(aabb.minX, aabb.minY, aabb.minZ).sub(clientEye).normalize();
+                    }
+                },
+
+                new Vec3dCreator() {
+                    @Override
+                    public MutableVec3d create(MutableVec3d instance, RayTraceToPlayerEngine engine, AABB aabb, MutableVec3d clientEye, MutableVec3d playerCenter) {
+                        return instance.set(aabb.minX, aabb.minY, aabb.minZ).sub(clientEye).normalize();
+                    }
+                },
+
+                new Vec3dCreator() {
+                    @Override
+                    public MutableVec3d create(MutableVec3d instance, RayTraceToPlayerEngine engine, AABB aabb, MutableVec3d clientEye, MutableVec3d playerCenter) {
+                        return instance.set(aabb.minX, aabb.maxY, aabb.minZ).sub(clientEye).normalize();
+                    }
+                },
+                new Vec3dCreator() {
+                    @Override
+                    public MutableVec3d create(MutableVec3d instance, RayTraceToPlayerEngine engine, AABB aabb, MutableVec3d clientEye, MutableVec3d playerCenter) {
+                        return instance.set(aabb.maxX, aabb.maxY, aabb.minZ).sub(clientEye).normalize();
+                    }
+                },
+                new Vec3dCreator() {
+                    @Override
+                    public MutableVec3d create(MutableVec3d instance, RayTraceToPlayerEngine engine, AABB aabb, MutableVec3d clientEye, MutableVec3d playerCenter) {
+                        return instance.set(aabb.maxX, aabb.minY, aabb.minZ).sub(clientEye).normalize();
+                    }
+                },
+                new Vec3dCreator() {
+                    @Override
+                    public MutableVec3d create(MutableVec3d instance, RayTraceToPlayerEngine engine, AABB aabb, MutableVec3d clientEye, MutableVec3d playerCenter) {
+                        return instance.set(aabb.minX, aabb.minY, aabb.maxZ).sub(clientEye).normalize();
+                    }
+                },
+                new Vec3dCreator() {
+                    @Override
+                    public MutableVec3d create(MutableVec3d instance, RayTraceToPlayerEngine engine, AABB aabb, MutableVec3d clientEye, MutableVec3d playerCenter) {
+                        return instance.set(aabb.minX, aabb.maxY, aabb.maxZ).sub(clientEye).normalize();
+                    }
+                },
+                new Vec3dCreator() {
+                    @Override
+                    public MutableVec3d create(MutableVec3d instance, RayTraceToPlayerEngine engine, AABB aabb, MutableVec3d clientEye, MutableVec3d playerCenter) {
+                        return instance.set(aabb.maxX, aabb.maxY, aabb.maxZ).sub(clientEye).normalize();
+                    }
+                },
+                new Vec3dCreator() {
+                    @Override
+                    public MutableVec3d create(MutableVec3d instance, RayTraceToPlayerEngine engine, AABB aabb, MutableVec3d clientEye, MutableVec3d playerCenter) {
+                        return instance.set(aabb.maxX, aabb.minY, aabb.maxZ).sub(clientEye).normalize();
+                    }
+                },
+                new Vec3dCreator() {
+                    @Override
+                    public MutableVec3d create(MutableVec3d instance, RayTraceToPlayerEngine engine, AABB aabb, MutableVec3d clientEye, MutableVec3d playerCenter) {
+                        return instance.set(playerCenter).add(0, 0, 0).sub(clientEye).normalize();
+                    }
+                },
+                new Vec3dCreator() {
+                    @Override
+                    public MutableVec3d create(MutableVec3d instance, RayTraceToPlayerEngine engine, AABB aabb, MutableVec3d clientEye, MutableVec3d playerCenter) {
+                        return instance.set(playerCenter).add(0.6, 0, 0).sub(clientEye).normalize();
+                    }
+                },
+                new Vec3dCreator() {
+                    @Override
+                    public MutableVec3d create(MutableVec3d instance, RayTraceToPlayerEngine engine, AABB aabb, MutableVec3d clientEye, MutableVec3d playerCenter) {
+                        return instance.set(playerCenter).add(-0.6, 0, 0).sub(clientEye).normalize();
+                    }
+                },
+                new Vec3dCreator() {
+                    @Override
+                    public MutableVec3d create(MutableVec3d instance, RayTraceToPlayerEngine engine, AABB aabb, MutableVec3d clientEye, MutableVec3d playerCenter) {
+                        return instance.set(playerCenter).add(0, 0, 0.6).sub(clientEye).normalize();
+                    }
+                },
+                new Vec3dCreator() {
+                    @Override
+                    public MutableVec3d create(MutableVec3d instance, RayTraceToPlayerEngine engine, AABB aabb, MutableVec3d clientEye, MutableVec3d playerCenter) {
+                        return instance.set(playerCenter).add(0, 0, -0.6).sub(clientEye).normalize();
+                    }
+                },
+
         };
     }
 
+    //        RAY_DIRECTIONS = new Vec3dCreator[]{
+    //                (engine, aabb, clientEye, ignored) -> new MutableVec3d(aabb.minX, aabb.minY, aabb.minZ).sub(clientEye).normalize(),
+    //                (engine, aabb, clientEye, ignored) -> new MutableVec3d(aabb.minX, aabb.maxY, aabb.minZ).sub(clientEye).normalize(),
+    //                (engine, aabb, clientEye, ignored) -> new MutableVec3d(aabb.maxX, aabb.maxY, aabb.minZ).sub(clientEye).normalize(),
+    //                (engine, aabb, clientEye, ignored) -> new MutableVec3d(aabb.maxX, aabb.minY, aabb.minZ).sub(clientEye).normalize(),
+    //                (engine, aabb, clientEye, ignored) -> new MutableVec3d(aabb.minX, aabb.minY, aabb.maxZ).sub(clientEye).normalize(),
+    //                (engine, aabb, clientEye, ignored) -> new MutableVec3d(aabb.minX, aabb.maxY, aabb.maxZ).sub(clientEye).normalize(),
+    //                (engine, aabb, clientEye, ignored) -> new MutableVec3d(aabb.maxX, aabb.maxY, aabb.maxZ).sub(clientEye).normalize(),
+    //                (engine, aabb, clientEye, ignored) -> new MutableVec3d(aabb.maxX, aabb.minY, aabb.maxZ).sub(clientEye).normalize(),
+    //                (engine, aabb, clientEye, playerCenter) -> playerCenter.add(0, 0, 0).sub(clientEye).normalize(),
+    //                (engine, aabb, clientEye, playerCenter) -> playerCenter.add(0.6, 0, 0).sub(clientEye).normalize(),
+    //                (engine, aabb, clientEye, playerCenter) -> playerCenter.add(-0.6, 0, 0).sub(clientEye).normalize(),
+    //                (engine, aabb, clientEye, playerCenter) -> playerCenter.add(0, 0, 0.6).sub(clientEye).normalize(),
+    //                (engine, aabb, clientEye, playerCenter) -> playerCenter.add(0, 0, -0.6).sub(clientEye).normalize(),
+    //
+    //        };
+
     @FunctionalInterface
     private interface RayDirectionCreator {
-        Vec3d create(RayTraceToPlayerEngine engine, AABB aabb, Vec3d clientEye, Vec3d playerCenter);
+        MutableVec3d create(MutableVec3d instance, RayTraceToPlayerEngine engine, AABB aabb, MutableVec3d clientEye, MutableVec3d playerCenter);
+    }
+
+    public static abstract class Vec3dCreator implements RayDirectionCreator { // рассчитано на работу в одном потоке
+        private final MutableVec3d instance = new MutableVec3d();
+
+        public MutableVec3d create(RayTraceToPlayerEngine engine, AABB aabb, MutableVec3d clientEye, MutableVec3d playerCenter) {
+            return create(instance, engine, aabb, clientEye, playerCenter);
+        }
     }
 }

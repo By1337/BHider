@@ -1,5 +1,6 @@
 package dev.by1337.hider.shapes;
 
+import dev.by1337.hider.util.MutableVec3d;
 import org.by1337.blib.geom.Vec3d;
 
 import java.util.Objects;
@@ -27,7 +28,7 @@ public class DefaultBlockBox implements BlockBox {
         return false;
     }
 
-    public boolean rayIntersects(Vec3d rayOrigin, Vec3d rayDirection, int x, int y, int z) {
+    public boolean rayIntersects(MutableVec3d rayOrigin, MutableVec3d rayDirection, int x, int y, int z) {
         double invDirX = rayDirection.x == 0 ? Double.POSITIVE_INFINITY : 1.0 / rayDirection.x;
         double invDirY = rayDirection.y == 0 ? Double.POSITIVE_INFINITY : 1.0 / rayDirection.y;
         double invDirZ = rayDirection.z == 0 ? Double.POSITIVE_INFINITY : 1.0 / rayDirection.z;
