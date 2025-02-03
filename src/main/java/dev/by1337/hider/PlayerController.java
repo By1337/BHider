@@ -36,7 +36,9 @@ public class PlayerController implements Closeable, Runnable {
     public final ServerPlayer client;
     public final VirtualWorld level;
     public final Config config;
-    private long tick;
+    public final boolean bypassHide;
+    public final boolean bypassArmor;
+    public long ticksLived;
 
     public PlayerController(Player player, Plugin plugin, UUID uuid, Channel channel, Config config, BlockShapes blockShapes) {
         this.plugin = plugin;
@@ -46,6 +48,8 @@ public class PlayerController implements Closeable, Runnable {
         this.channel = channel;
         this.client = ((CraftPlayer) player).getHandle();
         this.config = config;
+        bypassHide = player.hasPermission(config.hideSettings.bypassPermission);
+        bypassArmor = player.hasPermission(config.armorHide.bypassPermission);
     }
 
     @Override
@@ -54,9 +58,9 @@ public class PlayerController implements Closeable, Runnable {
     }
 
     private void tick() {
-        tick++;
+        ticksLived++;
         for (ViewingEntity value : viewingEntities.values()) {
-            value.tick(tick);
+            value.tick();
         }
     }
 

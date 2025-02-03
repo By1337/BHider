@@ -7,7 +7,7 @@ import org.by1337.blib.geom.Vec3d;
 
 public interface ViewingEntity {
     void onPacket(Packet packet);
-    void tick(long tick);
+    void tick();
     Entity getBukkitEntity();
     AABB getAABB();
 }

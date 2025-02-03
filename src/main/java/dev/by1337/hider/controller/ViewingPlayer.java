@@ -72,13 +72,11 @@ public class ViewingPlayer implements ViewingEntity {
     @Override
     public void onPacket(Packet packet) {
         if (packet instanceof MoveEntityPacket) {
-            onMove((MoveEntityPacket) packet);
             if (suppressUpdate) packet.setCanceled(true);
         } else if (packet instanceof SetEquipmentPacket) {
             setEquipmentPacket((SetEquipmentPacket) packet);
             if (suppressUpdate) packet.setCanceled(true);
         } else if (packet instanceof SetEntityDataPacket) {
-            setEntityDataPacket((SetEntityDataPacket) packet);
             if (suppressUpdate) packet.setCanceled(true);
         } else if (packet instanceof RotateHeadPacket) {
             if (suppressUpdate) packet.setCanceled(true);
@@ -86,13 +84,13 @@ public class ViewingPlayer implements ViewingEntity {
             if (suppressUpdate) packet.setCanceled(true);
         } else if (packet instanceof AnimatePacket) {
             if (suppressUpdate) packet.setCanceled(true);
-        }else if (packet instanceof AddPlayerPacket) {
+        } else if (packet instanceof AddPlayerPacket) {
             if (suppressUpdate) packet.setCanceled(true);
         }
     }
 
     @Override
-    public void tick(long tick) {
+    public void tick() {
         visibleTick();
         hideArmorTick();
         isVisible.invalidate();
@@ -109,7 +107,13 @@ public class ViewingPlayer implements ViewingEntity {
     }
 
     private void visibleTick() {
-        fullHide.set(!isGlowing() && (isHideNickName() || isInvisible()) && !isVisible.get());
+        if (clientController.bypassHide) return;
+        if (config.hideSettings.disableWorlds.contains(((ServerLevel) client.world).worldDataServer.getName())) {
+            fullHide.set(false);
+        } else {
+            fullHide.set(!isGlowing() && (isHideNickName() || isInvisible()) && !isVisible.get());
+        }
+
 
         if (fullHide.isDirty()) {
             if (fullHide.get()) {
@@ -158,6 +162,7 @@ public class ViewingPlayer implements ViewingEntity {
     }
 
     private void hideArmorTick() {
+        if (clientController.bypassArmor) return;
         if (equipment.isEmpty() || suppressUpdate) return;
         if (config.armorHide.disableWorlds.contains(((ServerLevel) client.world).worldDataServer.getName())) {
             if (hideArmor.get()) {
@@ -180,14 +185,6 @@ public class ViewingPlayer implements ViewingEntity {
         }
     }
 
-
-    private void onMove(MoveEntityPacket packet) {
-    }
-
-    private void setEntityDataPacket(SetEntityDataPacket packet) {
-        //  isShift = me.isSneaking();
-        //  isGlowing = me.isGlowing();
-    }
 
     private void setEquipmentPacket(SetEquipmentPacket packet) {
         var list = packet.slots();

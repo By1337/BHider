@@ -25,7 +25,7 @@ public class RayTraceToPlayerEngine {
     private final AutoReadWriteLock lock = new AutoReadWriteLock();
 
 
-    private @Nullable RayDirectionCreator lastDirection;
+    private @Nullable Vec3dCreator lastDirection;
 
     public RayTraceToPlayerEngine(PlayerController controller, ViewingEntity viewingEntity) {
         this.controller = controller;
@@ -53,10 +53,11 @@ public class RayTraceToPlayerEngine {
         double playerPosY = entity.lastY;
         double playerPosZ = entity.lastZ;
 
+        // исключаем ситуации когда рейтрейс был проверен с неполной информацией о чанках
+        if (controller.ticksLived > 100 && lastClientPos.equals(clientPosX, clientPosY, clientPosZ) && lastPlayerPos.equals(playerPosX, playerPosY, playerPosZ)) {
+            return lastState;
+        }
 
-//        if (lastClientPos.equals(clientPosX, clientPosY, clientPosZ) && lastPlayerPos.equals(playerPosX, playerPosY, playerPosZ)) {
-//            return lastState;
-//        }
         lastClientPos.x = clientPosX;
         lastClientPos.y = clientPosY;
         lastClientPos.z = clientPosZ;
@@ -84,11 +85,11 @@ public class RayTraceToPlayerEngine {
                 NumberUtil.floor(playerCenter.z)
         );
 
-//        if (lastDirection != null) {
-//            if (!rayIntersects(clientPos, lastDirection.create(this, aabb, clientEye, playerCenter))) {
-//                return true;
-//            }
-//        }
+        if (lastDirection != null) {
+            if (!rayIntersects(lastClientPos, lastDirection.create(this, aabb, clientEye, playerCenter))) {
+                return true;
+            }
+        }
         for (Vec3dCreator rayDirection : RAY_DIRECTIONS) {
             if (rayDirection == lastDirection) continue;
             if (!rayIntersects(lastClientPos, rayDirection.create(this, aabb, clientEye, playerCenter))) {
