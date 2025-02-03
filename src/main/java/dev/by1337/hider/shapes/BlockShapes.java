@@ -67,7 +67,6 @@ public class BlockShapes {
                 }
             }
         }
-        System.out.println("Занято " + blockBoxes.size() + " из 256");
     }
     public byte toBlockBox(int block){
         return blockIdToBlockBox[block];

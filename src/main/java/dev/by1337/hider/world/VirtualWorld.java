@@ -20,6 +20,30 @@ public class VirtualWorld {
         this.blockShapes = blockShapes;
     }
 
+    public long sizeOf() {
+        long size = 16L + 8L; // Ссылки на массив lastLoadedChunks и blockShapes
+
+        // Размер lastLoadedChunks
+        size += 16 * 8L; // 16 ссылок на VirtualChunk
+
+        // Размер chunks (хэш-таблица)
+        size += 32L + chunks.size() * (8L + 8L); // Примерный размер хэш-таблицы
+
+        for (VirtualChunk chunk : chunks.values()) {
+            if (chunk != null) {
+                size += 8L + 8L + 16 * 8L; // x, z, массив sections
+
+                for (VirtualChunkSection section : chunk.sections) {
+                    if (section != null) {
+                        size += 8L + VirtualChunkSection.BLOCK_COUNT; // Ссылка + массив blockStates
+                    }
+                }
+            }
+        }
+        return size;
+    }
+
+
     @Nullable
     public VirtualChunk getChunk(int x, int z) {
         int cacheKey = getChunkCacheKey(x, z);

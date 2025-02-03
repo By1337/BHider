@@ -19,7 +19,6 @@ import net.minecraft.server.level.ServerPlayer;
 import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
-import org.bukkit.scheduler.BukkitTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,12 +27,11 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class PlayerController implements Closeable {
+public class PlayerController implements Closeable, Runnable {
     public final Logger logger;
     private final Plugin plugin;
     private final UUID uuid;
     private final Map<Integer, ViewingEntity> viewingEntities = new ConcurrentHashMap<>();
-    private final BukkitTask task;
     public final Channel channel;
     public final ServerPlayer client;
     public final VirtualWorld level;
@@ -45,11 +43,14 @@ public class PlayerController implements Closeable {
         this.uuid = uuid;
         level = new VirtualWorld(blockShapes);
         logger = LoggerFactory.getLogger(player.getName());
-        //  task = plugin.getServer().getScheduler().runTaskTimerAsynchronously(plugin, this::tick, 1, 1);
-        task = plugin.getServer().getScheduler().runTaskTimer(plugin, this::tick, 1, 1); // todo make async
         this.channel = channel;
         this.client = ((CraftPlayer) player).getHandle();
         this.config = config;
+    }
+
+    @Override
+    public void run() {
+        tick();
     }
 
     private void tick() {
@@ -84,7 +85,7 @@ public class PlayerController implements Closeable {
         long l = System.nanoTime();
         if (packet instanceof AddPlayerPacket addPlayerPacket) {
             ViewingPlayer playerData = new ViewingPlayer(this, addPlayerPacket);
-            System.out.println(playerData);
+            //System.out.println(playerData);
             viewingEntities.put(playerData.entityId, playerData);
         } else if (packet instanceof LevelChunkPacket packet1) {
             packet1.write(out); // todo хз пакет ломается если его сначала прочитать
@@ -123,6 +124,5 @@ public class PlayerController implements Closeable {
 
     @Override
     public void close() {
-        task.cancel();
     }
 }

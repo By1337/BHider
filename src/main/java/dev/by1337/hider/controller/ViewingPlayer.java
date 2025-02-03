@@ -56,10 +56,10 @@ public class ViewingPlayer implements ViewingEntity {
         fieldOfView = config.armorHide.fieldOfView;
         rayTraceEngine = new RayTraceToPlayerEngine(clientController, this);
         isVisible = new CashedSupplier<>(() -> {
-/*            var clientEye = client.getBukkitEntity().getEyeLocation();
-            Vector directionToTarget = player.getBukkitEntity().getLocation().add(0, -0.5, 0) //todo
-                    .toVector().subtract(clientEye.toVector()).normalize();
-            if (directionToTarget.angle(clientEye.getDirection()) >= fieldOfView) return false;*/
+//            var clientEye = client.getBukkitEntity().getEyeLocation();
+//            Vector directionToTarget = player.getBukkitEntity().getLocation().add(0, -0.5, 0)
+//                    .toVector().subtract(clientEye.toVector()).normalize();
+//            if (directionToTarget.angle(clientEye.getDirection()) >= fieldOfView) return false;
 
             return rayTraceEngine.noneMatch();
         });
@@ -111,7 +111,7 @@ public class ViewingPlayer implements ViewingEntity {
                 channel.writeAndFlush(new RemoveEntitiesPacket(entityId));
             } else {
                 suppressUpdate = false;
-                channel.writeAndFlush(new AddPlayerPacket(
+                channel.write(new AddPlayerPacket(
                         entityId,
                         uuid,
                         player.locX(),
@@ -120,18 +120,20 @@ public class ViewingPlayer implements ViewingEntity {
                         (byte) ((int) (player.yaw * 256.0F / 360.0F)),
                         (byte) ((int) (player.pitch * 256.0F / 360.0F))
                 ));
-                channel.writeAndFlush(new SetEntityDataPacket(
+                channel.write(new SetEntityDataPacket(
                         entityId,
                         player.getDataWatcher().getAll()
                 ));
-                channel.writeAndFlush(new RotateHeadPacket(
+                channel.write(new RotateHeadPacket(
                         entityId,
                         (byte) ((int) (player.yaw * 256.0F / 360.0F))
                 ));
                 if (!equipment.isEmpty() && isVisible.get()) {
                     sendActualEquip();
+                } else {
+                    channel.flush();
                 }
-                channel.flush();
+
             }
             fullHide.setDirty(false);
         }

@@ -3,14 +3,13 @@ package dev.by1337.hider.engine;
 import dev.by1337.hider.PlayerController;
 import dev.by1337.hider.controller.ViewingEntity;
 import dev.by1337.hider.shapes.BlockBox;
+import dev.by1337.hider.world.VirtualWorld;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.AABB;
 import org.by1337.blib.geom.Vec3d;
 import org.by1337.blib.geom.Vec3i;
 import org.by1337.blib.util.lock.AutoReadWriteLock;
 import org.jetbrains.annotations.Nullable;
-
-import java.util.ArrayList;
 
 public class RayTraceToPlayerEngine {
     private static final int[] BLOCK_BOX = new int[2048 * 4];
@@ -44,9 +43,9 @@ public class RayTraceToPlayerEngine {
         Vec3d clientPos = new Vec3d(client.lastX, client.getHeadY(), client.lastZ);
         Vec3d playerPos = new Vec3d(viewingEntity.getBukkitEntity().getLocation());
 
-     //  if (clientPos.equals(lastClientPos) && playerPos.equals(lastPlayerPos)) {
-     //      return lastState;
-     //  }
+//        if (clientPos.equals(lastClientPos) && playerPos.equals(lastPlayerPos)) {
+//            return lastState;
+//        }
         lastClientPos = clientPos;
         lastPlayerPos = playerPos;
 
@@ -60,11 +59,11 @@ public class RayTraceToPlayerEngine {
 
         loadBoxes(clientEye.toBlockPos(), playerCenter.toBlockPos());
 
-       // if (lastDirection != null) {
-       //     if (!rayIntersects(clientPos, lastDirection.create(this, aabb, clientEye, playerCenter))) {
-       //         return true;
-       //     }
-       // }
+//        if (lastDirection != null) {
+//            if (!rayIntersects(clientPos, lastDirection.create(this, aabb, clientEye, playerCenter))) {
+//                return true;
+//            }
+//        }
         for (RayDirectionCreator rayDirection : RAY_DIRECTIONS) {
             if (rayDirection == lastDirection) continue;
             if (!rayIntersects(clientPos, rayDirection.create(this, aabb, clientEye, playerCenter))) {
@@ -76,7 +75,7 @@ public class RayTraceToPlayerEngine {
     }
 
     private boolean rayIntersects(Vec3d clientPos, Vec3d rayDirection) {
-        for (int i = 0; i < BLOCK_BOX_INDEX;) {
+        for (int i = 0; i < BLOCK_BOX_INDEX; ) {
             int x = BLOCK_BOX[i++];
             int y = BLOCK_BOX[i++];
             int z = BLOCK_BOX[i++];
@@ -90,9 +89,8 @@ public class RayTraceToPlayerEngine {
         return false;
     }
 
-    public void loadBoxes(Vec3i start, Vec3i end) {
+    private void loadBoxes(Vec3i start, Vec3i end) {
 
-       //var level = controller.level;
         int x0 = start.x, y0 = start.y, z0 = start.z;
         int x1 = end.x, y1 = end.y, z1 = end.z;
 
@@ -197,7 +195,8 @@ public class RayTraceToPlayerEngine {
             }
         }
     }
-    private void add(int x, int y, int z){
+
+    private void add(int x, int y, int z) {
         BLOCK_BOX[BLOCK_BOX_INDEX++] = x;
         BLOCK_BOX[BLOCK_BOX_INDEX++] = y;
         BLOCK_BOX[BLOCK_BOX_INDEX++] = z;
@@ -207,57 +206,6 @@ public class RayTraceToPlayerEngine {
     public enum GotoType {
         X, Y, Z
     }
-
-    /*public void add(GotoType nextStep, GotoType currentStep, int x, int y, int z) {
-        var level = controller.level;
-        //BLOCK_BOX[BLOCK_BOX_INDEX++] = level.getBlockBox(x, y, z);
-
-        if (nextStep == GotoType.Y) {
-            if (currentStep != GotoType.X) {
-                BLOCK_BOX[BLOCK_BOX_INDEX++] = level.getBlockBox(x + 1, y, z);
-                BLOCK_BOX[BLOCK_BOX_INDEX++] = level.getBlockBox(x - 1, y, z);
-            }
-            if (currentStep != GotoType.Z) {
-                BLOCK_BOX[BLOCK_BOX_INDEX++] = level.getBlockBox(x, y, z + 1);
-                BLOCK_BOX[BLOCK_BOX_INDEX++] = level.getBlockBox(x, y, z - 1);
-            }
-        }
-
-        if (nextStep == GotoType.Z) {
-            if (currentStep != GotoType.X) {
-                BLOCK_BOX[BLOCK_BOX_INDEX++] = level.getBlockBox(x + 1, y, z);
-                BLOCK_BOX[BLOCK_BOX_INDEX++] = level.getBlockBox(x - 1, y, z);
-
-                if (currentStep != GotoType.Y) {
-                    BLOCK_BOX[BLOCK_BOX_INDEX++] = level.getBlockBox(x + 1, y + 1, z);
-                    BLOCK_BOX[BLOCK_BOX_INDEX++] = level.getBlockBox(x + 1, y - 1, z);
-
-                    BLOCK_BOX[BLOCK_BOX_INDEX++] = level.getBlockBox(x - 1, y + 1, z);
-                    BLOCK_BOX[BLOCK_BOX_INDEX++] = level.getBlockBox(x - 1, y - 1, z);
-                }
-            }
-            if (currentStep != GotoType.Y) {
-                BLOCK_BOX[BLOCK_BOX_INDEX++] = level.getBlockBox(x, y + 1, z);
-                BLOCK_BOX[BLOCK_BOX_INDEX++] = level.getBlockBox(x, y - 1, z);
-            }
-        }
-        if (nextStep == GotoType.X) {
-            if (currentStep != GotoType.Z) {
-                BLOCK_BOX[BLOCK_BOX_INDEX++] = level.getBlockBox(x, y, z + 1);
-                BLOCK_BOX[BLOCK_BOX_INDEX++] = level.getBlockBox(x, y, z - 1);
-            }
-            if (currentStep != GotoType.Y) {
-                BLOCK_BOX[BLOCK_BOX_INDEX++] = level.getBlockBox(x, y + 1, z);
-                BLOCK_BOX[BLOCK_BOX_INDEX++] = level.getBlockBox(x, y - 1, z);
-
-                BLOCK_BOX[BLOCK_BOX_INDEX++] = level.getBlockBox(x, y + 1, z + 1);
-                BLOCK_BOX[BLOCK_BOX_INDEX++] = level.getBlockBox(x, y - 1, z + 1);
-
-                BLOCK_BOX[BLOCK_BOX_INDEX++] = level.getBlockBox(x, y + 1, z - 1);
-                BLOCK_BOX[BLOCK_BOX_INDEX++] = level.getBlockBox(x, y - 1, z - 1);
-            }
-        }
-    }*/
 
     static {
         RAY_DIRECTIONS = new RayDirectionCreator[]{

@@ -3,6 +3,7 @@ package dev.by1337.hider.network;
 import dev.by1337.hider.PlayerController;
 import dev.by1337.hider.config.Config;
 import dev.by1337.hider.shapes.BlockShapes;
+import dev.by1337.hider.ticker.Ticker;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
@@ -15,9 +16,10 @@ import java.io.Closeable;
 public class OutPacketListener extends MessageToByteEncoder<ByteBuf> implements Closeable {
     public static final String NAME = "bhider_listener";
     private final PlayerController playerController;
+    private final Ticker ticker;
 
-    public OutPacketListener(Player player, Plugin plugin, Channel channel, Config config, BlockShapes blockShapes) {
-
+    public OutPacketListener(Player player, Plugin plugin, Channel channel, Config config, BlockShapes blockShapes, Ticker ticker) {
+        this.ticker = ticker;
         this.playerController = new PlayerController(
                 player,
                 plugin,
@@ -26,6 +28,7 @@ public class OutPacketListener extends MessageToByteEncoder<ByteBuf> implements 
                 config,
                 blockShapes
         );
+        ticker.addTask(playerController);
     }
 
     @Override
@@ -35,6 +38,7 @@ public class OutPacketListener extends MessageToByteEncoder<ByteBuf> implements 
 
     @Override
     public void close() {
+        ticker.removeTask(playerController);
         playerController.close();
     }
 
@@ -42,9 +46,5 @@ public class OutPacketListener extends MessageToByteEncoder<ByteBuf> implements 
     public void handlerRemoved(ChannelHandlerContext ctx) throws Exception {
         super.handlerRemoved(ctx);
         close();
-    }
-
-    public PlayerController playerController() {
-        return playerController;
     }
 }

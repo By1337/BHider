@@ -4,7 +4,6 @@ main: dev.by1337.hider.BHider
 api-version: '1.16'
 depend: [ BLib ]
 authors: [ By1337 ]
-commands:
-  bhide:
-    aliases:
-      - bh
+permissions:
+  bhider.*:
+    default: op

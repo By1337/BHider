@@ -2,6 +2,7 @@ package dev.by1337.hider.network;
 
 import dev.by1337.hider.config.Config;
 import dev.by1337.hider.shapes.BlockShapes;
+import dev.by1337.hider.ticker.Ticker;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelOutboundHandlerAdapter;
 import net.minecraft.server.level.ServerPlayer;
@@ -23,11 +24,13 @@ public class PipelineHooker implements Listener, Closeable {
     private final Plugin plugin;
     private final Config config;
     private final BlockShapes blockShapes;
+    private final Ticker ticker;
 
-    public PipelineHooker(Plugin plugin, Config config, BlockShapes blockShapes) {
+    public PipelineHooker(Plugin plugin, Config config, BlockShapes blockShapes, Ticker ticker) {
         this.plugin = plugin;
         this.config = config;
         this.blockShapes = blockShapes;
+        this.ticker = ticker;
         Bukkit.getOnlinePlayers().forEach(this::hook);
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
     }
@@ -37,7 +40,7 @@ public class PipelineHooker implements Listener, Closeable {
         if (channel.pipeline().get(OutPacketListener.NAME) != null)
             unhook(player);
         // client <- prepender <- compress <- bhider_encoder <- bhider_listener <- via-encoder <- encoder <- generate packet
-        channel.pipeline().addBefore("encoder", OutPacketListener.NAME, new OutPacketListener(player, plugin, channel, config, blockShapes));
+        channel.pipeline().addBefore("encoder", OutPacketListener.NAME, new OutPacketListener(player, plugin, channel, config, blockShapes, ticker));
         channel.pipeline().addBefore(OutPacketListener.NAME, CustomPacketEncoder.NAME, new CustomPacketEncoder());
         StringBuilder sb = new StringBuilder();
         sb.append("client <- ");
