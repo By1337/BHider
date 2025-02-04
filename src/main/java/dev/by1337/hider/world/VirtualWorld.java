@@ -21,21 +21,15 @@ public class VirtualWorld {
     }
 
     public long sizeOf() {
-        long size = 16L + 8L; // Ссылки на массив lastLoadedChunks и blockShapes
-
-        // Размер lastLoadedChunks
-        size += 16 * 8L; // 16 ссылок на VirtualChunk
-
-        // Размер chunks (хэш-таблица)
-        size += 32L + chunks.size() * (8L + 8L); // Примерный размер хэш-таблицы
-
+        long size = 16L + 8L;
+        size += 16 * 8L;
+        size += 32L + chunks.size() * (8L + 8L);
         for (VirtualChunk chunk : chunks.values()) {
             if (chunk != null) {
-                size += 8L + 8L + 16 * 8L; // x, z, массив sections
-
+                size += 8L + 8L + 16 * 8L;
                 for (VirtualChunkSection section : chunk.sections) {
                     if (section != null) {
-                        size += 8L + VirtualChunkSection.BLOCK_COUNT; // Ссылка + массив blockStates
+                        size += 8L + VirtualChunkSection.BLOCK_COUNT;
                     }
                 }
             }

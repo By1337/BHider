@@ -68,7 +68,7 @@ public class RayTraceToPlayerEngine {
 
         clientEye.set(client.lastX, client.getHeadY(), client.lastZ);
 
-        var extraSize = controller.config.armorHide.expandAabb;
+        var extraSize = controller.config.expandAabb;
         var aabb = viewingEntity.getAABB().expand(extraSize.x, extraSize.y, extraSize.z);
         playerCenter.set(aabb.maxX + aabb.minX, aabb.maxY + aabb.minY, aabb.maxZ + aabb.minZ).div(2);
 
@@ -321,24 +321,6 @@ public class RayTraceToPlayerEngine {
 
         };
     }
-
-    //        RAY_DIRECTIONS = new Vec3dCreator[]{
-    //                (engine, aabb, clientEye, ignored) -> new MutableVec3d(aabb.minX, aabb.minY, aabb.minZ).sub(clientEye).normalize(),
-    //                (engine, aabb, clientEye, ignored) -> new MutableVec3d(aabb.minX, aabb.maxY, aabb.minZ).sub(clientEye).normalize(),
-    //                (engine, aabb, clientEye, ignored) -> new MutableVec3d(aabb.maxX, aabb.maxY, aabb.minZ).sub(clientEye).normalize(),
-    //                (engine, aabb, clientEye, ignored) -> new MutableVec3d(aabb.maxX, aabb.minY, aabb.minZ).sub(clientEye).normalize(),
-    //                (engine, aabb, clientEye, ignored) -> new MutableVec3d(aabb.minX, aabb.minY, aabb.maxZ).sub(clientEye).normalize(),
-    //                (engine, aabb, clientEye, ignored) -> new MutableVec3d(aabb.minX, aabb.maxY, aabb.maxZ).sub(clientEye).normalize(),
-    //                (engine, aabb, clientEye, ignored) -> new MutableVec3d(aabb.maxX, aabb.maxY, aabb.maxZ).sub(clientEye).normalize(),
-    //                (engine, aabb, clientEye, ignored) -> new MutableVec3d(aabb.maxX, aabb.minY, aabb.maxZ).sub(clientEye).normalize(),
-    //                (engine, aabb, clientEye, playerCenter) -> playerCenter.add(0, 0, 0).sub(clientEye).normalize(),
-    //                (engine, aabb, clientEye, playerCenter) -> playerCenter.add(0.6, 0, 0).sub(clientEye).normalize(),
-    //                (engine, aabb, clientEye, playerCenter) -> playerCenter.add(-0.6, 0, 0).sub(clientEye).normalize(),
-    //                (engine, aabb, clientEye, playerCenter) -> playerCenter.add(0, 0, 0.6).sub(clientEye).normalize(),
-    //                (engine, aabb, clientEye, playerCenter) -> playerCenter.add(0, 0, -0.6).sub(clientEye).normalize(),
-    //
-    //        };
-
     @FunctionalInterface
     private interface RayDirectionCreator {
         MutableVec3d create(MutableVec3d instance, RayTraceToPlayerEngine engine, AABB aabb, MutableVec3d clientEye, MutableVec3d playerCenter);

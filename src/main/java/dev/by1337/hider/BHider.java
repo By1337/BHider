@@ -5,7 +5,11 @@ import dev.by1337.hider.config.Config;
 import dev.by1337.hider.network.PipelineHooker;
 import dev.by1337.hider.shapes.BlockShapes;
 import dev.by1337.hider.ticker.Ticker;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelOutboundHandlerAdapter;
+import net.minecraft.server.level.ServerPlayer;
 import org.bukkit.command.CommandSender;
+import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -16,6 +20,10 @@ import org.by1337.blib.command.CommandWrapper;
 import org.by1337.blib.command.requires.RequiresPermission;
 import org.by1337.blib.util.ResourceUtil;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public class BHider extends JavaPlugin {
     private PipelineHooker pipelineHooker;
@@ -63,6 +71,28 @@ public class BHider extends JavaPlugin {
                         .requires(new RequiresPermission<>("bhider.admin.tickTime"))
                         .executor(((sender, args) -> {
                             sender.sendMessage(ticker.lastTickTime() + " ms");
+                        }))
+                ).addSubCommand(new Command<CommandSender>("pipeline")
+                        .requires(new RequiresPermission<>("bhider.admin.pipeline"))
+                        .executor(((sender, args) -> {
+                            ServerPlayer player = ((CraftPlayer)sender).getHandle();
+                            Channel channel = player.networkManager.channel;
+
+                            List<String> list = new ArrayList<>();
+                            channel.pipeline().forEach(e -> {
+                                if (e.getValue() instanceof ChannelOutboundHandlerAdapter)
+                                    list.add(e.getKey());
+                            });
+                            Collections.reverse(list);
+
+                            StringBuilder sb = new StringBuilder();
+                            sb.append("<server> -> ");
+                            for (String s : list) {
+                                sb.append(s).append(" -> ");
+                            }
+                            sb.append("<client>");
+                            sender.sendMessage(sb.toString());
+                            System.out.println(sb);
                         }))
                 ).addSubCommand(new Command<CommandSender>("mem")
                         .requires(new RequiresPermission<>("bhider.admin.mem"))

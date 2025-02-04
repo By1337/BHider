@@ -73,12 +73,12 @@ public class PlayerController implements Closeable, Runnable {
         if (creator != null) {
             onPacket(creator.create(in), out);
         } else {
-            var packet = ConnectionProtocol.PLAY.createPacket(PacketFlow.CLIENTBOUND, packetId);
+           /* var packet = ConnectionProtocol.PLAY.createPacket(PacketFlow.CLIENTBOUND, packetId);
             if (
                     !(packet instanceof ClientboundLightUpdatePacket) &&
                             !(packet instanceof ClientboundSetTimePacket)
                             && packet != null)
-                //   logger.info(packet.getClass().getName());
+                //   logger.info(packet.getClass().getName());*/
 
                 in0.resetReaderIndex();
             out0.writeBytes(in0);
@@ -86,7 +86,6 @@ public class PlayerController implements Closeable, Runnable {
     }
 
     private void onPacket(dev.by1337.hider.network.packet.Packet packet, FriendlyByteBuf out) {
-        long l = System.nanoTime();
         if (packet instanceof AddPlayerPacket addPlayerPacket) {
             ViewingPlayer playerData = new ViewingPlayer(this, addPlayerPacket);
             viewingEntities.put(playerData.entityId, playerData);
@@ -115,14 +114,6 @@ public class PlayerController implements Closeable, Runnable {
             }
         }
         packet.write(out);
-        long time = (System.nanoTime() - l) / 1_000_000;
-        if (time < 1) {
-             //  logger.info("Packet {} {} ms.", packet.getClass().getSimpleName(), time);
-        } else if (time < 10) {
-            logger.warn("Packet {} {} ms.", packet.getClass().getSimpleName(), time);
-        } else {
-            logger.error("Packet {} {} ms.", packet.getClass().getSimpleName(), time);
-        }
     }
 
     @Override

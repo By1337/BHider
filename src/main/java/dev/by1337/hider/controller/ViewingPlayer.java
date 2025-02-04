@@ -53,7 +53,7 @@ public class ViewingPlayer implements ViewingEntity {
         client = clientController.client;
         player = ((CraftPlayer) Bukkit.getPlayer(uuid)).getHandle();
         config = clientController.config;
-        fieldOfView = config.armorHide.fieldOfView;
+        fieldOfView = config.fieldOfView;
         rayTraceEngine = new RayTraceToPlayerEngine(clientController, this);
         isVisible = new CashedSupplier<>(() -> {
             var clientEye = client.getBukkitEntity().getEyeLocation();
