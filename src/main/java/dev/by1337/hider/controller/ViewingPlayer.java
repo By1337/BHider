@@ -220,6 +220,7 @@ public class ViewingPlayer implements ViewingEntity {
                 entityId,
                 equipment.entrySet().stream().map(e -> Pair.of(e.getKey(), e.getValue())).toList()
         );
+        if (config.armorHide.hideMeta) SetEquipmentPacketMutator.obfuscate(equipmentPacket);
         channel.writeAndFlush(equipmentPacket);
     }
 

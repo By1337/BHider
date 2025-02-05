@@ -1,6 +1,5 @@
 package dev.by1337.hider;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import dev.by1337.hider.config.Config;
 import dev.by1337.hider.network.PipelineHooker;
 import dev.by1337.hider.shapes.BlockShapes;
@@ -10,16 +9,12 @@ import io.netty.channel.ChannelOutboundHandlerAdapter;
 import net.minecraft.server.level.ServerPlayer;
 import org.bukkit.command.CommandSender;
 import org.bukkit.craftbukkit.entity.CraftPlayer;
-import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.scheduler.BukkitRunnable;
-import org.bukkit.util.Vector;
 import org.by1337.blib.BLib;
 import org.by1337.blib.command.Command;
 import org.by1337.blib.command.CommandWrapper;
 import org.by1337.blib.command.requires.RequiresPermission;
 import org.by1337.blib.util.ResourceUtil;
-import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -58,7 +53,7 @@ public class BHider extends JavaPlugin {
         ticker.stop();
     }
 
-    private Command<CommandSender> createCommand(){
+    private Command<CommandSender> createCommand() {
         return new Command<CommandSender>("bhider")
                 .requires(new RequiresPermission<>("bhider.admin"))
                 .aliases("bh")
@@ -75,7 +70,7 @@ public class BHider extends JavaPlugin {
                 ).addSubCommand(new Command<CommandSender>("pipeline")
                         .requires(new RequiresPermission<>("bhider.admin.pipeline"))
                         .executor(((sender, args) -> {
-                            ServerPlayer player = ((CraftPlayer)sender).getHandle();
+                            ServerPlayer player = ((CraftPlayer) sender).getHandle();
                             Channel channel = player.networkManager.channel;
 
                             List<String> list = new ArrayList<>();

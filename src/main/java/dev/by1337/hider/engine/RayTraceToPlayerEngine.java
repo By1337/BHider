@@ -242,31 +242,6 @@ public class RayTraceToPlayerEngine {
                 new Vec3dCreator() {
                     @Override
                     public MutableVec3d create(MutableVec3d instance, RayTraceToPlayerEngine engine, AABB aabb, MutableVec3d clientEye, MutableVec3d playerCenter) {
-                        return instance.set(aabb.minX, aabb.minY, aabb.minZ).sub(clientEye).normalize();
-                    }
-                },
-
-                new Vec3dCreator() {
-                    @Override
-                    public MutableVec3d create(MutableVec3d instance, RayTraceToPlayerEngine engine, AABB aabb, MutableVec3d clientEye, MutableVec3d playerCenter) {
-                        return instance.set(aabb.minX, aabb.maxY, aabb.minZ).sub(clientEye).normalize();
-                    }
-                },
-                new Vec3dCreator() {
-                    @Override
-                    public MutableVec3d create(MutableVec3d instance, RayTraceToPlayerEngine engine, AABB aabb, MutableVec3d clientEye, MutableVec3d playerCenter) {
-                        return instance.set(aabb.maxX, aabb.maxY, aabb.minZ).sub(clientEye).normalize();
-                    }
-                },
-                new Vec3dCreator() {
-                    @Override
-                    public MutableVec3d create(MutableVec3d instance, RayTraceToPlayerEngine engine, AABB aabb, MutableVec3d clientEye, MutableVec3d playerCenter) {
-                        return instance.set(aabb.maxX, aabb.minY, aabb.minZ).sub(clientEye).normalize();
-                    }
-                },
-                new Vec3dCreator() {
-                    @Override
-                    public MutableVec3d create(MutableVec3d instance, RayTraceToPlayerEngine engine, AABB aabb, MutableVec3d clientEye, MutableVec3d playerCenter) {
                         return instance.set(aabb.minX, aabb.minY, aabb.maxZ).sub(clientEye).normalize();
                     }
                 },
@@ -276,12 +251,22 @@ public class RayTraceToPlayerEngine {
                         return instance.set(aabb.minX, aabb.maxY, aabb.maxZ).sub(clientEye).normalize();
                     }
                 },
+
                 new Vec3dCreator() {
                     @Override
                     public MutableVec3d create(MutableVec3d instance, RayTraceToPlayerEngine engine, AABB aabb, MutableVec3d clientEye, MutableVec3d playerCenter) {
-                        return instance.set(aabb.maxX, aabb.maxY, aabb.maxZ).sub(clientEye).normalize();
+                        return instance.set(aabb.minX, aabb.maxY, aabb.minZ).sub(clientEye).normalize();
                     }
                 },
+
+
+                new Vec3dCreator() {
+                    @Override
+                    public MutableVec3d create(MutableVec3d instance, RayTraceToPlayerEngine engine, AABB aabb, MutableVec3d clientEye, MutableVec3d playerCenter) {
+                        return instance.set(aabb.maxX, aabb.minY, aabb.minZ).sub(clientEye).normalize();
+                    }
+                },
+
                 new Vec3dCreator() {
                     @Override
                     public MutableVec3d create(MutableVec3d instance, RayTraceToPlayerEngine engine, AABB aabb, MutableVec3d clientEye, MutableVec3d playerCenter) {
@@ -291,34 +276,25 @@ public class RayTraceToPlayerEngine {
                 new Vec3dCreator() {
                     @Override
                     public MutableVec3d create(MutableVec3d instance, RayTraceToPlayerEngine engine, AABB aabb, MutableVec3d clientEye, MutableVec3d playerCenter) {
-                        return instance.set(playerCenter).add(0, 0, 0).sub(clientEye).normalize();
-                    }
-                },
-                new Vec3dCreator() {
-                    @Override
-                    public MutableVec3d create(MutableVec3d instance, RayTraceToPlayerEngine engine, AABB aabb, MutableVec3d clientEye, MutableVec3d playerCenter) {
-                        return instance.set(playerCenter).add(0.6, 0, 0).sub(clientEye).normalize();
-                    }
-                },
-                new Vec3dCreator() {
-                    @Override
-                    public MutableVec3d create(MutableVec3d instance, RayTraceToPlayerEngine engine, AABB aabb, MutableVec3d clientEye, MutableVec3d playerCenter) {
-                        return instance.set(playerCenter).add(-0.6, 0, 0).sub(clientEye).normalize();
-                    }
-                },
-                new Vec3dCreator() {
-                    @Override
-                    public MutableVec3d create(MutableVec3d instance, RayTraceToPlayerEngine engine, AABB aabb, MutableVec3d clientEye, MutableVec3d playerCenter) {
-                        return instance.set(playerCenter).add(0, 0, 0.6).sub(clientEye).normalize();
-                    }
-                },
-                new Vec3dCreator() {
-                    @Override
-                    public MutableVec3d create(MutableVec3d instance, RayTraceToPlayerEngine engine, AABB aabb, MutableVec3d clientEye, MutableVec3d playerCenter) {
-                        return instance.set(playerCenter).add(0, 0, -0.6).sub(clientEye).normalize();
+                        return instance.set(aabb.maxX, aabb.maxY, aabb.maxZ).sub(clientEye).normalize();
                     }
                 },
 
+                new Vec3dCreator() {
+                    @Override
+                    public MutableVec3d create(MutableVec3d instance, RayTraceToPlayerEngine engine, AABB aabb, MutableVec3d clientEye, MutableVec3d playerCenter) {
+                        return instance.set(aabb.maxX, aabb.maxY, aabb.minZ).sub(clientEye).normalize();
+
+                    }
+                },
+
+                new Vec3dCreator() {
+                    @Override
+                    public MutableVec3d create(MutableVec3d instance, RayTraceToPlayerEngine engine, AABB aabb, MutableVec3d clientEye, MutableVec3d playerCenter) {
+                        var center = aabb.getCenter();
+                        return instance.set(center.x, center.y, center.z).sub(clientEye).normalize();
+                    }
+                }
         };
     }
     @FunctionalInterface
