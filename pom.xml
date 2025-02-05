@@ -106,7 +106,7 @@
     </repositories>
 
     <dependencies>
-        <dependency>
+        <dependency> <!-- see https://github.com/By1337/BNms-plugin -->
             <groupId>org.by1337.nms</groupId>
             <artifactId>paper-nms</artifactId>
             <version>1.16.5</version>

@@ -1,6 +1,7 @@
 package dev.by1337.hider;
 
 import dev.by1337.hider.config.Config;
+import dev.by1337.hider.metrics.Metrics;
 import dev.by1337.hider.network.PipelineHooker;
 import dev.by1337.hider.shapes.BlockShapes;
 import dev.by1337.hider.ticker.Ticker;
@@ -24,6 +25,7 @@ public class BHider extends JavaPlugin {
     private PipelineHooker pipelineHooker;
     private Ticker ticker;
     private CommandWrapper commandWrapper;
+    private Metrics metrics;
 
     @Override
     public void onLoad() {
@@ -32,6 +34,7 @@ public class BHider extends JavaPlugin {
 
     @Override
     public void onEnable() {
+        metrics = new Metrics(this, 24652);
         Config config = ResourceUtil.load("config.yml", this).get().decode(Config.CODEC).getOrThrow().getFirst();
         BlockShapes blockShapes = new BlockShapes(config.ignoreBlocks);
 
@@ -51,6 +54,7 @@ public class BHider extends JavaPlugin {
         commandWrapper.close();
         pipelineHooker.close();
         ticker.stop();
+        metrics.shutdown();
     }
 
     private Command<CommandSender> createCommand() {
