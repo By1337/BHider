@@ -10,11 +10,7 @@ import dev.by1337.hider.world.VirtualWorld;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
-import net.minecraft.network.ConnectionProtocol;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.protocol.PacketFlow;
-import net.minecraft.network.protocol.game.ClientboundLightUpdatePacket;
-import net.minecraft.network.protocol.game.ClientboundSetTimePacket;
 import net.minecraft.server.level.ServerPlayer;
 import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.entity.Player;
@@ -80,7 +76,7 @@ public class PlayerController implements Closeable, Runnable {
                             && packet != null)
                 //   logger.info(packet.getClass().getName());*/
 
-                in0.resetReaderIndex();
+            in0.resetReaderIndex();
             out0.writeBytes(in0);
         }
     }
