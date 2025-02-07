@@ -8,6 +8,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToByteEncoder;
+import net.minecraft.network.CompressionEncoder;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 

@@ -12,6 +12,7 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
+import org.bukkit.Bukkit;
 import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
@@ -62,6 +63,7 @@ public class PlayerController implements Closeable, Runnable {
 
     public void onPacket(ChannelHandlerContext ctx, ByteBuf in0, ByteBuf out0) {
         FriendlyByteBuf in = new FriendlyByteBuf(in0);
+        in.markReaderIndex();
         FriendlyByteBuf out = new FriendlyByteBuf(out0);
         int packetId = in.readVarInt_();
         in.resetReaderIndex();
@@ -83,6 +85,7 @@ public class PlayerController implements Closeable, Runnable {
 
     private void onPacket(dev.by1337.hider.network.packet.Packet packet, FriendlyByteBuf out) {
         if (packet instanceof AddPlayerPacket addPlayerPacket) {
+            if (Bukkit.getPlayer(addPlayerPacket.playerId()) == null) return;
             ViewingPlayer playerData = new ViewingPlayer(this, addPlayerPacket);
             viewingEntities.put(playerData.entityId, playerData);
         } else if (packet instanceof LevelChunkPacket packet1) {

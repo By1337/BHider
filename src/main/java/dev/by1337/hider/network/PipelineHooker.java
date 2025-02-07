@@ -5,6 +5,7 @@ import dev.by1337.hider.config.Config;
 import dev.by1337.hider.shapes.BlockShapes;
 import dev.by1337.hider.ticker.Ticker;
 import io.netty.channel.Channel;
+import net.minecraft.server.level.ServerPlayer;
 import org.bukkit.Bukkit;
 import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.entity.Player;
@@ -16,6 +17,7 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.Plugin;
 
 import java.io.Closeable;
+import java.util.List;
 
 public class PipelineHooker implements Listener, Closeable {
     private final Plugin plugin;
@@ -33,15 +35,31 @@ public class PipelineHooker implements Listener, Closeable {
     }
 
     private void hook(Player player) {
-        Channel channel = ((CraftPlayer) player).getHandle().networkManager.channel;
+        ServerPlayer serverPlayer = ((CraftPlayer) player).getHandle();
+        if (serverPlayer == null || serverPlayer.networkManager == null) return;
+        Channel channel = serverPlayer.networkManager.channel;
+
         if (channel.pipeline().get(OutPacketListener.NAME) != null)
             unhook(player);
-        channel.pipeline().addBefore("encoder", OutPacketListener.NAME, new OutPacketListener(player, plugin, channel, config, blockShapes, ticker));
+
+        List<String> handlers = channel.pipeline().names();
+        int index = handlers.lastIndexOf("compress");
+        String lastEncoder;
+
+        if (index == -1) {
+            lastEncoder = "encoder";
+        } else {
+            lastEncoder = handlers.get(index + 1);
+        }
+        channel.pipeline().addBefore(lastEncoder, OutPacketListener.NAME, new OutPacketListener(player, plugin, channel, config, blockShapes, ticker));
         channel.pipeline().addBefore(OutPacketListener.NAME, CustomPacketEncoder.NAME, new CustomPacketEncoder());
     }
 
+
     private void unhook(Player player) {
-        Channel channel = ((CraftPlayer) player).getHandle().networkManager.channel;
+        ServerPlayer serverPlayer = ((CraftPlayer) player).getHandle();
+        if (serverPlayer == null || serverPlayer.networkManager == null) return;
+        Channel channel = serverPlayer.networkManager.channel;
         if (channel.pipeline().get(OutPacketListener.NAME) == null) return;
         var handler = channel.pipeline().remove(OutPacketListener.NAME);
         if (handler instanceof OutPacketListener opl) opl.close();
