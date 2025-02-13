@@ -62,6 +62,9 @@ public class PlayerController implements Closeable, Runnable {
     }
 
     public void onPacket(ChannelHandlerContext ctx, ByteBuf in0, ByteBuf out0) {
+        if (in0.readableBytes() == 0) {
+            return;
+        }
         FriendlyByteBuf in = new FriendlyByteBuf(in0);
         in.markReaderIndex();
         FriendlyByteBuf out = new FriendlyByteBuf(out0);
@@ -78,14 +81,17 @@ public class PlayerController implements Closeable, Runnable {
                             && packet != null)
                 //   logger.info(packet.getClass().getName());*/
 
-            in0.resetReaderIndex();
             out0.writeBytes(in0);
         }
     }
 
     private void onPacket(dev.by1337.hider.network.packet.Packet packet, FriendlyByteBuf out) {
         if (packet instanceof AddPlayerPacket addPlayerPacket) {
-            if (Bukkit.getPlayer(addPlayerPacket.playerId()) == null) return;
+            Player pl = Bukkit.getPlayer(addPlayerPacket.playerId());
+            if (pl == null) {
+                packet.write(out);
+                return;
+            }
             ViewingPlayer playerData = new ViewingPlayer(this, addPlayerPacket);
             viewingEntities.put(playerData.entityId, playerData);
         } else if (packet instanceof LevelChunkPacket packet1) {

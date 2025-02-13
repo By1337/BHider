@@ -43,7 +43,7 @@ public class PipelineHooker implements Listener, Closeable {
             unhook(player);
 
         List<String> handlers = channel.pipeline().names();
-        int index = handlers.lastIndexOf("compress");
+        int index = elseGet(handlers.lastIndexOf("via-encoder"), handlers.lastIndexOf("compress"));
         String lastEncoder;
 
         if (index == -1) {
@@ -53,6 +53,10 @@ public class PipelineHooker implements Listener, Closeable {
         }
         channel.pipeline().addBefore(lastEncoder, OutPacketListener.NAME, new OutPacketListener(player, plugin, channel, config, blockShapes, ticker));
         channel.pipeline().addBefore(OutPacketListener.NAME, CustomPacketEncoder.NAME, new CustomPacketEncoder());
+    }
+
+    private int elseGet(int x, int x1) {
+        return x == -1 ? x1 : x;
     }
 
 

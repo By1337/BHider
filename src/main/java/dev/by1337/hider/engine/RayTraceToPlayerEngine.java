@@ -13,7 +13,7 @@ import org.by1337.blib.util.lock.AutoReadWriteLock;
 import org.jetbrains.annotations.Nullable;
 
 public class RayTraceToPlayerEngine {
-    private static final int[] BLOCK_BOX = new int[2048 * 4]; // рассчитано что будет всего один поток поэтому это static
+    private static final int[] BLOCK_BOX = new int[3072 * 4]; // рассчитано что будет всего один поток поэтому это static
     private static int BLOCK_BOX_INDEX;
     private static final Vec3dCreator[] RAY_DIRECTIONS;
     private final PlayerController controller;
