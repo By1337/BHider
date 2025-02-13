@@ -64,6 +64,7 @@ public class ViewingPlayer implements ViewingEntity {
             return rayTraceEngine.noneMatch();
         });
 
+        if (clientController.bypassHide) return;
         fullHide.set(!isGlowing() && (isHideNickName() || isInvisible()) && !isVisible.get());
         fullHide.setDirty(false);
         packet.setCanceled(fullHide.get()); // я попытался, пакеты чанков могут прийти позже из-за чего при заходе на сервер некоторые игроки могут некоторое время быть видимыми
