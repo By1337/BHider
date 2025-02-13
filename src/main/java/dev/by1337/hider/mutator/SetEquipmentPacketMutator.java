@@ -33,6 +33,14 @@ public class SetEquipmentPacketMutator {
                 if (tag.hasKey("SkullOwnerOrig")) {
                     newTag.set("SkullOwnerOrig", tag.get("SkullOwnerOrig"));
                 }
+                if (tag.hasKey("display")) {
+                    CompoundTag display = tag.getCompound("display");
+                    if (display.hasKey("color")) {
+                        CompoundTag newDisplay = new CompoundTag();
+                        newDisplay.set("color", display.get("color"));
+                        newTag.set("display", newDisplay);
+                    }
+                }
                 item.setTag(newTag);
             }
             slots.add(Pair.of(pair.getFirst(), item));
