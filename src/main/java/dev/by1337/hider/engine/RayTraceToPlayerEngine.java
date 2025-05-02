@@ -1,19 +1,30 @@
 package dev.by1337.hider.engine;
 
+import dev.by1337.hider.BHider;
 import dev.by1337.hider.PlayerController;
 import dev.by1337.hider.controller.ViewingEntity;
 import dev.by1337.hider.shapes.BlockBox;
 import dev.by1337.hider.util.MutableVec3d;
+import dev.by1337.hider.world.memory.MemoryWorld;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.phys.AABB;
+import org.bukkit.Bukkit;
+import org.bukkit.craftbukkit.block.data.CraftBlockData;
 import org.bukkit.craftbukkit.entity.CraftEntity;
+import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.by1337.blib.geom.NumberUtil;
 import org.by1337.blib.util.lock.AutoReadWriteLock;
 import org.jetbrains.annotations.Nullable;
 
 public class RayTraceToPlayerEngine {
-    private static final int[] BLOCK_BOX = new int[3072 * 4]; // рассчитано что будет всего один поток поэтому это static
+    public static boolean NO_OPTIMIZE  = true;
+    public static int RAY_TRACE_COUNTER = 0;
+    private static final int BLOCK_LIMIT = 3072;
+    private static final int[] BLOCK_BOX = new int[BLOCK_LIMIT * 4]; // рассчитано что будет всего один поток поэтому это static
     private static int BLOCK_BOX_INDEX;
     private static final Vec3dCreator[] RAY_DIRECTIONS;
     private final PlayerController controller;
@@ -41,8 +52,11 @@ public class RayTraceToPlayerEngine {
 
     private final MutableVec3d clientEye = new MutableVec3d();
     private final MutableVec3d playerCenter = new MutableVec3d();
+    private MemoryWorld memoryWorld;
 
     private boolean noneMatch0() {
+        memoryWorld = BHider.worldSynchronizer.getMemoryWorld(controller.client.world.getWorld().getName());
+        if (memoryWorld == null) return true;
         ServerPlayer client = controller.client;
         double clientPosX = client.lastX;
         double clientPosY = client.getHeadY();
@@ -54,9 +68,12 @@ public class RayTraceToPlayerEngine {
         double playerPosZ = entity.lastZ;
 
         // исключаем ситуации когда рейтрейс был проверен с неполной информацией о чанках
-        if (controller.ticksLived > 100 && lastClientPos.equals(clientPosX, clientPosY, clientPosZ) && lastPlayerPos.equals(playerPosX, playerPosY, playerPosZ)) {
-            return lastState;
+        if (!NO_OPTIMIZE){
+            if (controller.ticksLived > 100 && lastClientPos.equals(clientPosX, clientPosY, clientPosZ) && lastPlayerPos.equals(playerPosX, playerPosY, playerPosZ)) {
+                return lastState;
+            }
         }
+
 
         lastClientPos.x = clientPosX;
         lastClientPos.y = clientPosY;
@@ -74,7 +91,7 @@ public class RayTraceToPlayerEngine {
 
         BLOCK_BOX_INDEX = 0;
 
-
+        RAY_TRACE_COUNTER++;
         loadBoxes(
                 NumberUtil.floor(clientEye.x),
                 NumberUtil.floor(clientEye.y),
@@ -85,7 +102,7 @@ public class RayTraceToPlayerEngine {
                 NumberUtil.floor(playerCenter.z)
         );
 
-        if (lastDirection != null) {
+        if (lastDirection != null && !NO_OPTIMIZE) {
             if (!rayIntersects(lastClientPos, lastDirection.create(this, aabb, clientEye, playerCenter))) {
                 return true;
             }
@@ -133,7 +150,7 @@ public class RayTraceToPlayerEngine {
         int x = startX, y = startY, z = startZ;
 
         GotoType lastStep = null;
-        while (true) {
+        while (BLOCK_BOX_INDEX < BLOCK_LIMIT * 4) {
             add(x, y, z);
             if (x == endX && y == endY && z == endZ) break;
 
@@ -220,10 +237,19 @@ public class RayTraceToPlayerEngine {
     }
 
     private void add(int x, int y, int z) {
+        if (BLOCK_BOX_INDEX >= BLOCK_LIMIT * 4) return;
         BLOCK_BOX[BLOCK_BOX_INDEX++] = x;
         BLOCK_BOX[BLOCK_BOX_INDEX++] = y;
         BLOCK_BOX[BLOCK_BOX_INDEX++] = z;
-        BLOCK_BOX[BLOCK_BOX_INDEX++] = controller.level.getBlockBoxId(x, y, z) & 0xFF;
+
+        //BLOCK_BOX[BLOCK_BOX_INDEX++] = controller.level.getBlockBoxId(x, y, z) & 0xFF;
+        int v = memoryWorld.getBlockState(x, y, z);
+        BLOCK_BOX[BLOCK_BOX_INDEX++] = controller.level.blockShapes.toBlockBox(v) & 0xFF;
+//        var pl = Bukkit.getPlayerExact("_By1337_");
+//        if (pl != null){
+//            var packet = new ClientboundBlockUpdatePacket(new BlockPos(x, y, z), Block.getByCombinedId(v));
+//            ((CraftPlayer)pl).getHandle().playerConnection.sendPacket(packet);
+//        }
     }
 
     public enum GotoType {
@@ -297,6 +323,7 @@ public class RayTraceToPlayerEngine {
                 }
         };
     }
+
     @FunctionalInterface
     private interface RayDirectionCreator {
         MutableVec3d create(MutableVec3d instance, RayTraceToPlayerEngine engine, AABB aabb, MutableVec3d clientEye, MutableVec3d playerCenter);

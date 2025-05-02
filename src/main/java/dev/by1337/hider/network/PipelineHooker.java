@@ -5,6 +5,7 @@ import dev.by1337.hider.config.Config;
 import dev.by1337.hider.shapes.BlockShapes;
 import dev.by1337.hider.ticker.Ticker;
 import io.netty.channel.Channel;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import org.bukkit.Bukkit;
 import org.bukkit.craftbukkit.entity.CraftPlayer;
@@ -36,13 +37,15 @@ public class PipelineHooker implements Listener, Closeable {
 
     private void hook(Player player) {
         ServerPlayer serverPlayer = ((CraftPlayer) player).getHandle();
+        
         if (serverPlayer == null || serverPlayer.networkManager == null) return;
         Channel channel = serverPlayer.networkManager.channel;
-
+        
         if (channel.pipeline().get(OutPacketListener.NAME) != null)
             unhook(player);
 
         List<String> handlers = channel.pipeline().names();
+        System.out.println(handlers);
         int index = elseGet(handlers.lastIndexOf("via-encoder"), handlers.lastIndexOf("compress"));
         String lastEncoder;
 

@@ -40,6 +40,7 @@ public class VirtualWorld {
 
     @Nullable
     public VirtualChunk getChunk(int x, int z) {
+        if (true) return null;
         int cacheKey = getChunkCacheKey(x, z);
         VirtualChunk chunk = lastLoadedChunks[cacheKey];
         if (chunk != null && chunk.x == x && chunk.z == z) {
@@ -62,6 +63,7 @@ public class VirtualWorld {
     }
 
     public void readChunk(LevelChunkPacket packet) {
+        if (true) return;
         Vec2i pos = new Vec2i(packet.x(), packet.z());
         VirtualChunk virtualChunk = new VirtualChunk(pos.x, pos.y);
         virtualChunk.replaceWithPacketData(

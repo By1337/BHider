@@ -5,8 +5,11 @@ import dev.by1337.hider.metrics.Metrics;
 import dev.by1337.hider.network.PipelineHooker;
 import dev.by1337.hider.shapes.BlockShapes;
 import dev.by1337.hider.ticker.Ticker;
+import dev.by1337.hider.world.sync.ChunkDataSynchronizer;
+import dev.by1337.hider.world.sync.WorldSynchronizer;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelOutboundHandlerAdapter;
+import jdk.jfr.Experimental;
 import net.minecraft.server.level.ServerPlayer;
 import org.bukkit.command.CommandSender;
 import org.bukkit.craftbukkit.entity.CraftPlayer;
@@ -26,6 +29,9 @@ public class BHider extends JavaPlugin {
     private Ticker ticker;
     private CommandWrapper commandWrapper;
     private Metrics metrics;
+
+    @Experimental
+    public static WorldSynchronizer worldSynchronizer;
 
     @Override
     public void onLoad() {
@@ -47,6 +53,8 @@ public class BHider extends JavaPlugin {
         t.setName("bhider-ticker");
         t.start();
         pipelineHooker = new PipelineHooker(this, config, blockShapes, ticker);
+        worldSynchronizer = new WorldSynchronizer(this);
+
     }
 
     @Override
@@ -55,6 +63,7 @@ public class BHider extends JavaPlugin {
         pipelineHooker.close();
         ticker.stop();
         metrics.shutdown();
+        worldSynchronizer.close();
     }
 
     private Command<CommandSender> createCommand() {
@@ -69,7 +78,7 @@ public class BHider extends JavaPlugin {
                 ).addSubCommand(new Command<CommandSender>("tickTime")
                         .requires(new RequiresPermission<>("bhider.admin.tickTime"))
                         .executor(((sender, args) -> {
-                            sender.sendMessage(ticker.lastTickTime() + " ms");
+                            sender.sendMessage(ticker.lastTickTime() + " ms for " + ticker.lastRayTraceCount() + " ray trace");
                         }))
                 ).addSubCommand(new Command<CommandSender>("pipeline")
                         .requires(new RequiresPermission<>("bhider.admin.pipeline"))
@@ -112,6 +121,15 @@ public class BHider extends JavaPlugin {
                                     "Количество игроков {}, На виртуальные миры затрачено {}mb памяти. На одного игрока приходится в среднем {}mb.",
                                     count, String.format("%.2f", sizeMb), String.format("%.2f", avgSizeMb)
                             );
+                            BLib.getApi().getMessage().sendMsg(
+                                    sender,
+                                    "На memory world затрачено {}mb. количество чанков {}",
+                                    String.format("%.2f", (double) worldSynchronizer.sizeOf() / (1024.0 * 1024.0)),
+                                    worldSynchronizer.chunkCount()
+                            );
+                            for (ChunkDataSynchronizer value : worldSynchronizer.values()) {
+                                BLib.getApi().getMessage().sendMsg(sender, value.toString());
+                            }
                         }))
                 )
                 ;

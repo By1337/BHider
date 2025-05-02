@@ -1,5 +1,6 @@
 package dev.by1337.hider.ticker;
 
+import dev.by1337.hider.engine.RayTraceToPlayerEngine;
 import dev.by1337.hider.util.TPSCounter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,6 +20,7 @@ public class Ticker {
     private volatile boolean stopped;
     private final TPSCounter tpsCounter = new TPSCounter();
     private long lastTickTime = 0;
+    private int lastRayTraceCount = 0;
 
     public void start() {
         nextTick = getMonotonicMillis();
@@ -45,6 +47,8 @@ public class Ticker {
                         LOGGER.error("Failed to run task {}", task, t);
                     }
                 }
+                lastRayTraceCount = RayTraceToPlayerEngine.RAY_TRACE_COUNTER;
+                RayTraceToPlayerEngine.RAY_TRACE_COUNTER = 0;
                 lastTickTime = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime);
 
                 while (getMonotonicMillis() < nextTick) {
@@ -76,6 +80,10 @@ public class Ticker {
 
     public long lastTickTime() {
         return lastTickTime;
+    }
+
+    public int lastRayTraceCount() {
+        return lastRayTraceCount;
     }
 
     public List<Runnable> tasks() {
